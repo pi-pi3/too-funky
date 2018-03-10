@@ -1,6 +1,9 @@
 #![feature(lang_items)]
 #![no_std]
 
+extern crate rlibc;
+extern crate x86;
+
 use core::fmt;
 
 #[no_mangle]
