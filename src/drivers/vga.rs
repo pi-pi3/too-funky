@@ -67,6 +67,12 @@ impl From<Shade> for u8 {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Char(Shade, Shade, u8);
 
+impl Default for Char {
+    fn default() -> Char {
+        Char::from(0)
+    }
+}
+
 impl From<u8> for Char {
     #[inline]
     fn from(byte: u8) -> Char {
@@ -125,7 +131,18 @@ impl Vga {
 
         let vga = VGA_BUFFER as *mut _;
         let color = (Shade::default_bg(), Shade::default_fg());
-        Vga { vga, color, y: 0, x: 0 }
+        let mut vga = Vga { vga, color, y: 0, x: 0 };
+        vga.cls();
+        vga
+    }
+
+    pub fn cls(&mut self) {
+        let ch = Char::default().into();
+        for i in 0 .. WIDTH * HEIGHT {
+            unsafe {
+                self.write_raw(ch, i);
+            }
+        }
     }
 
     fn offset(&self) -> usize {
@@ -163,11 +180,13 @@ impl Vga {
         }
     }
 
+    #[inline]
     fn endl(&mut self) {
         self.cr();
         self.lf();
     }
 
+    #[inline]
     unsafe fn write_raw(&mut self, ch: u16, offset: usize) {
         *self.vga.add(offset) = ch;
     }
@@ -197,6 +216,11 @@ impl Vga {
     fn write_bytes(&mut self, bytes: &[u8]) {
         for &byte in bytes {
             self.write_byte(byte);
+        }
+
+        let offset = self.offset();
+        unsafe {
+            self.write_raw(Char::default().into(), offset);
         }
 
         // update cursor
