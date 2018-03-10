@@ -6,7 +6,7 @@ RS_SRC:=$(wildcard $(SRCDIR)/*.rs)
 
 SRC+=$(ASM_SRC) $(RS_SRC)
 OBJ+=$(patsubst $(SRCDIR)/arch/$(ARCH)/boot/%.asm,$(OBJDIR)/%.asm.o,$(ASM_SRC))
-LIBK:=$(BUILD)/libfunky.a
+LIBK:=$(BUILD)/libk.a
 LIB+=$(LIBK)
 IMAGE:=funky.iso
 ISO:=isofiles

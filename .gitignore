@@ -1,5 +1,6 @@
 
 /target/
+/isofiles
 **/*.rs.bk
 Cargo.lock
 .*.sw?

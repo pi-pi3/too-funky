@@ -5,7 +5,7 @@ authors = ["Szymon Walter <walter.szymon.98@gmail.com>"]
 publish = false
 
 [lib]
-name = "funky"
+name = "k"
 path = "src/kernel.rs"
 crate-type = ['staticlib']
 

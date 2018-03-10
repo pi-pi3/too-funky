@@ -1,5 +1,5 @@
-#![no_std]
 #![feature(lang_items)]
+#![no_std]
 
 use core::fmt;
 
