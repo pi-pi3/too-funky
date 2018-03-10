@@ -1,11 +1,9 @@
 use core::cmp::Ordering;
+use core::fmt;
 
 use x86::shared::io;
 
-use core::slice;
-use core::fmt;
-
-const VGA: *mut u16 = 0xe00b8000 as *mut _;
+const VGA_BUFFER: usize = 0xe00b8000;
 const WIDTH: usize = 80;
 const HEIGHT: usize = 25;
 
@@ -107,7 +105,7 @@ impl Ord for Char {
 }
 
 pub struct Vga {
-    vga: &'static mut [u16],
+    vga: *mut u16,
     color: (Shade, Shade),
     y: u16,
     x: u16,
@@ -125,7 +123,7 @@ impl Vga {
             reg_write(0x3d4, 0x0e, 0);
         }
 
-        let vga = unsafe { slice::from_raw_parts_mut(VGA, WIDTH*HEIGHT) };
+        let vga = VGA_BUFFER as *mut _;
         let color = (Shade::default_bg(), Shade::default_fg());
         Vga { vga, color, y: 0, x: 0 }
     }
@@ -170,8 +168,8 @@ impl Vga {
         self.lf();
     }
 
-    fn write_raw(&mut self, ch: u16, offset: usize) {
-        self.vga[offset] = ch;
+    unsafe fn write_raw(&mut self, ch: u16, offset: usize) {
+        *self.vga.add(offset) = ch;
     }
 
     fn write_byte(&mut self, byte: u8) {
@@ -188,7 +186,9 @@ impl Vga {
             byte => {
                 let ch = Char(self.color.0, self.color.1, byte);
                 let offset = self.offset();
-                self.write_raw(u16::from(ch), offset);
+                unsafe {
+                    self.write_raw(u16::from(ch), offset);
+                }
                 self.next();
             }
         }
