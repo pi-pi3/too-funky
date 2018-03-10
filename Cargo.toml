@@ -1,0 +1,15 @@
+[package]
+name = "too-funky"
+version = "0.0.1"
+authors = ["Szymon Walter <walter.szymon.98@gmail.com>"]
+publish = false
+
+[lib]
+name = "funky"
+path = "src/kernel.rs"
+crate-type = ['staticlib']
+
+[profile.dev]
+panic = 'abort'
+
+[dependencies]
