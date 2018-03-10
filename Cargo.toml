@@ -9,7 +9,6 @@ name = "k"
 path = "src/kernel.rs"
 crate-type = ['staticlib']
 
-[profile.dev]
-panic = 'abort'
-
 [dependencies]
+rlibc = "1.0"
+x86 = "0.8"

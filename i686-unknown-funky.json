@@ -5,9 +5,9 @@
 	"executables": true,
 	"linker": "gcc",
 	"linker-flavor": "gcc",
-	"llvm-target": "i686-unknown-linux-gnu",
+	"llvm-target": "i686-unknown-none",
 	"no-compiler-rt": true,
-	"os": "funky",
+	"os": "none",
 	"target-endian": "little",
 	"target-pointer-width": "32",
 	"target-c-int-width": "32",
@@ -19,5 +19,6 @@
 			"-nostartfiles"
 		]
 	},
-	"eliminate-frame-pointer": false
+	"eliminate-frame-pointer": false,
+    "panic-strategy": "abort"
 }

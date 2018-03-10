@@ -15,8 +15,13 @@ pub extern "C" fn kmain() -> ! {
 
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub extern fn rust_begin_panic(_msg: fmt::Arguments,
-                               _file: &'static str,
-                               _line: u32) -> ! {
+pub extern fn panic_fmt(_msg: fmt::Arguments,
+                        _file: &'static str,
+                        _line: u32) -> ! {
     loop {}
+}
+
+#[lang = "eh_personality"]
+#[no_mangle]
+pub extern fn eh_personality() {
 }
