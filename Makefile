@@ -19,7 +19,7 @@ run: $(IMAGE)
 	$(RUN) $(QEMU) -cdrom $(IMAGE)
 
 $(LIBK): $(RS_SRC) Cargo.toml
-	$(RUN) RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET)
+	$(RUN) RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET) $(CARGO_FLAGS)
 
 $(IMAGE): $(BUILD) $(OBJDIR) $(ISO) $(GRUB) $(KERNEL)
 	$(RUN) cp grub.cfg $(ISO)/boot/grub/
