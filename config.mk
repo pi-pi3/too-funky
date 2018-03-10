@@ -37,7 +37,7 @@ CFLAGS+=-D__funky_libk -D__funky_$(ARCH) -D__funky_arch=$(ARCH) \
 		-nostartfiles -nodefaultlibs
 CXXFLAGS+=
 ASFLAGS+=-f $(EXEFORMAT) 
-LDFLAGS+=-n -T $(LINKER) -m $(LDEMU)
+LDFLAGS+=-n -T $(LINKER) -m $(LDEMU) --gc-sections
 
 ifdef NDEBUG
 CFLAGS+=-Os -DNDEBUG
