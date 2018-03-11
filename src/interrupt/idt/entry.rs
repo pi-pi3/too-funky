@@ -1,6 +1,4 @@
 
-use interrupt::Handler;
-
 #[repr(C, packed)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Entry {
@@ -118,8 +116,8 @@ impl EntryBuilder {
         self
     }
 
-    pub fn isr<Isr: Into<Handler>>(mut self, isr: Isr) -> EntryBuilder {
-        self.offset = Some(isr.into().into_inner() as u32);
+    pub fn isr(mut self, isr: *const ()) -> EntryBuilder {
+        self.offset = Some(isr as usize as u32);
         self
     }
 
