@@ -1,3 +1,4 @@
+use core::mem;
 
 pub mod entry;
 pub use self::entry::*;
@@ -21,7 +22,7 @@ impl<'a> Idt<'a> {
 
     pub fn idtr(&self) -> Idtr {
         Idtr {
-            limit: (self.inner.len() - 1) as u16,
+            limit: (self.inner.len() * mem::size_of::<Entry>() - 1) as u16,
             base: self.inner.as_ptr() as usize as u32,
         }
     }
@@ -34,7 +35,7 @@ impl<'a> Idt<'a> {
         let entry = EntryBuilder::new()
             .present()
             .isr(isr)
-            .selector(0)
+            .selector(8)
             .ring(RingLevel::Ring0)
             .gate(Gate::Interrupt)
             .build();
