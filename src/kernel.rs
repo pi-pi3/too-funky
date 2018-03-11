@@ -127,20 +127,37 @@ pub extern "C" fn kmain() -> ! {
 
     unsafe {
         kernel::init_vga();
+        kprint!("vga... ");
+        kprintln!(
+            "{green}[OK]{reset}",
+            green = "\x1b[32m",
+            reset = "\x1b[0m"
+        );
 
         irq::disable();
 
+        kprint!("idt... ");
         kernel::init_idt();
+        kprintln!(
+            "{green}[OK]{reset}",
+            green = "\x1b[32m",
+            reset = "\x1b[0m"
+        );
+
+        kprint!("pic... ");
         kernel::init_pic(Pic::new(pic::PIC1), Pic::new(pic::PIC2));
 
         let mut pic = kernel::pic();
         pic.0.set_all();
         pic.1.set_all();
+        kprintln!(
+            "{green}[OK]{reset}",
+            green = "\x1b[32m",
+            reset = "\x1b[0m"
+        );
 
         irq::enable();
     }
-
-    kprintln!("\x1b[0;32mOk");
 
     loop {}
 }
