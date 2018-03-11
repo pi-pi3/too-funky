@@ -2,7 +2,7 @@
 include config.mk
 
 ASM_SRC:=$(wildcard $(SRCDIR)/arch/$(ARCH)/boot/*.asm)
-RS_SRC:=$(wildcard $(SRCDIR)/*.rs) $(wildcard $(SRCDIR)/**/*.rs)
+RS_SRC:=$(wildcard $(SRCDIR)/*.rs) $(wildcard $(SRCDIR)/**/*.rs) $(wildcard $(SRCDIR)/**/**/*.rs)
 
 SRC+=$(ASM_SRC) $(RS_SRC)
 OBJ+=$(patsubst $(SRCDIR)/arch/$(ARCH)/boot/%.asm,$(OBJDIR)/%.asm.o,$(ASM_SRC))
