@@ -140,7 +140,7 @@ pub extern "C" fn kmain() -> ! {
         irq::enable();
     }
 
-    kprintln!("OK");
+    kprintln!("\x1b[0;32mOk");
 
     loop {}
 }

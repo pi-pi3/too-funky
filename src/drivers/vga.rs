@@ -1,5 +1,5 @@
 use core::cmp::Ordering;
-use core::fmt;
+use core::fmt::{self, Write};
 
 use x86::shared::io;
 
@@ -22,6 +22,22 @@ pub enum Color {
     Magenta,
     Brown,
     White,
+}
+
+impl Color {
+    pub fn from_attr(byte: u8) -> Option<Color> {
+        match byte {
+            0 => Some(Color::Black),
+            1 => Some(Color::Red),
+            2 => Some(Color::Green),
+            3 => Some(Color::Brown),
+            4 => Some(Color::Blue),
+            5 => Some(Color::Magenta),
+            6 => Some(Color::Cyan),
+            7 => Some(Color::White),
+            _ => None,
+        }
+    }
 }
 
 impl From<Color> for u8 {
@@ -52,6 +68,14 @@ impl Shade {
 
     pub const fn default_fg() -> Shade {
         Shade::Dark(Color::White)
+    }
+
+    pub fn from_attr(byte: u8) -> Shade {
+        if byte & 0x8 == 0 {
+            Shade::Dark(Color::from_attr(byte & 0x7).unwrap())
+        } else {
+            Shade::Bright(Color::from_attr(byte & 0x7).unwrap())
+        }
     }
 }
 
@@ -110,11 +134,27 @@ impl Ord for Char {
     }
 }
 
+// supported VT100 escape codes:
+//
+//   - ^[[<COUNT>A, ^[<COUNT>B, ^[<COUNT>C, ^[<COUNT>D
+//   - ^[[<ROW>;<COLUMN>H
+//   - ^[7, ^[8
+//   - ^[[<ATTR>m, ^[[<ATTR1>;<ATTR2>m
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum State {
+    Default,
+    Esc,
+    Bracket,
+    Count(i16),
+    Tuple(i16, i16),
+}
+
 pub struct Vga {
     vga: *mut u16,
     color: (Shade, Shade),
-    y: u16,
-    x: u16,
+    y: i16,
+    x: i16,
+    state: State,
 }
 
 impl Vga {
@@ -131,7 +171,7 @@ impl Vga {
 
         let vga = VGA_BUFFER as *mut _;
         let color = (Shade::default_bg(), Shade::default_fg());
-        let mut vga = Vga { vga, color, y: 0, x: 0 };
+        let mut vga = Vga { vga, color, y: 0, x: 0, state: State::Default };
         vga.cls();
         vga
     }
@@ -149,35 +189,36 @@ impl Vga {
         self.y as usize * WIDTH + self.x as usize
     }
 
+    fn set_cursor(&mut self, y: i16, x: i16) {
+        self.y = y % HEIGHT as i16;
+        self.x = x % WIDTH as i16;
+    }
+
+    fn move_cursor(&mut self, y: i16, x: i16) {
+        self.x += x;
+        let y = y + self.x / WIDTH as i16;
+        self.y = (self.y + y) % HEIGHT as i16;
+        self.x %= WIDTH as i16;
+    }
+
+    #[inline]
     fn next(&mut self) {
-        self.x += 1;
-        if self.x as usize > WIDTH {
-            self.endl();
-        }
+        self.move_cursor(0, 1);
     }
 
+    #[inline]
     fn back(&mut self) {
-        if self.x == 0 {
-            self.x = WIDTH as u16 - 1;
-            if self.y == 0 {
-                self.y = HEIGHT as u16 - 1;
-            } else {
-                self.y -= 1;
-            }
-        } else {
-            self.x -= 1;
-        }
+        self.move_cursor(0, -1);
     }
 
+    #[inline]
     fn cr(&mut self) {
         self.x = 0;
     }
 
+    #[inline]
     fn lf(&mut self) {
-        self.y += 1;
-        if self.y as usize >= HEIGHT {
-            self.y = 0;
-        }
+        self.move_cursor(1, 0);
     }
 
     #[inline]
@@ -186,29 +227,145 @@ impl Vga {
         self.lf();
     }
 
+    // implemented attributes: bg, fg colours, bright, reset
+    fn set_attr(&mut self, attr0: i16, attr1: i16) -> Result<(), ()> {
+        match (attr0, attr1) {
+            (0, 0) => self.color = (Shade::default_bg(), Shade::default_fg()),
+            (1, c) if c >= 30 && c <= 37 => self.color.1 = Shade::from_attr(8 | (c as u8 - 30)),
+            (c, 1) if c >= 30 && c <= 37 => self.color.1 = Shade::from_attr(8 | (c as u8 - 30)),
+            (0, c) if c >= 30 && c <= 37 => self.color.1 = Shade::from_attr(c as u8 - 30),
+            (c, 0) if c >= 30 && c <= 37 => self.color.1 = Shade::from_attr(c as u8 - 30),
+            (1, c) if c >= 40 && c <= 47 => self.color.0 = Shade::from_attr(8 | (c as u8 - 30)),
+            (c, 1) if c >= 40 && c <= 47 => self.color.0 = Shade::from_attr(8 | (c as u8 - 30)),
+            (0, c) if c >= 40 && c <= 47 => self.color.0 = Shade::from_attr(c as u8 - 30),
+            (c, 0) if c >= 40 && c <= 47 => self.color.0 = Shade::from_attr(c as u8 - 30),
+            _ => return Err(()),
+        }
+        Ok(())
+    }
+
     #[inline]
     unsafe fn write_raw(&mut self, ch: u16, offset: usize) {
         *self.vga.add(offset) = ch;
     }
 
+//   - ^[[<COUNT>A, ^[<COUNT>B, ^[<COUNT>C, ^[<COUNT>D
+//   - ^[[<ROW>;<COLUMN>H
+//   - ^[7, ^[8
+//   - ^[[<ATTR>m, ^[[<ATTR1>;<ATTR2>m
     fn write_byte(&mut self, byte: u8) {
-        match byte {
-            b'\0' => {},
-            0x08 => self.back(),
-            b'\t' => self.write_byte(b' '), // tab
-            b'\n' => self.endl(),
-            b'\r' => self.cr(),
-            byte if byte < 0x20 => {
-                self.write_byte(b'^');
-                self.write_byte(byte + b'A');
-            }
-            byte => {
-                let ch = Char(self.color.0, self.color.1, byte);
-                let offset = self.offset();
-                unsafe {
-                    self.write_raw(u16::from(ch), offset);
+        match self.state {
+            State::Esc => match byte {
+                b'[' => self.state = State::Bracket,
+                b'7' => unimplemented!("^[7"),
+                b'8' => unimplemented!("^[8"),
+                byte => {
+                    self.write_byte(b'^');
+                    self.write_byte(b'[');
+                    self.write_byte(byte);
                 }
-                self.next();
+            }
+            State::Bracket => match byte {
+                b'A' => {
+                    self.state = State::Default;
+                    self.move_cursor(1, 0);
+                }
+                b'B' => {
+                    self.state = State::Default;
+                    self.move_cursor(-1, 0);
+                }
+                b'C' => {
+                    self.state = State::Default;
+                    self.move_cursor(0, 1);
+                }
+                b'D' => {
+                    self.state = State::Default;
+                    self.move_cursor(0, -1);
+                }
+                b'H' => {
+                    self.state = State::Default;
+                    self.set_cursor(0, 0);
+                }
+                x if x >= b'0' && x <= b'9' => {
+                    self.state = State::Count(x as i16 - b'0' as i16);
+                }
+                byte => {
+                    self.write_byte(b'^');
+                    self.write_byte(b'[');
+                    self.write_byte(b'[');
+                    self.write_byte(byte);
+                }
+            }
+            State::Count(i) => match byte {
+                b'A' => {
+                    self.state = State::Default;
+                    self.move_cursor(i, 0);
+                }
+                b'B' => {
+                    self.state = State::Default;
+                    self.move_cursor(-i, 0);
+                }
+                b'C' => {
+                    self.state = State::Default;
+                    self.move_cursor(0, i);
+                }
+                b'D' => {
+                    self.state = State::Default;
+                    self.move_cursor(0, -i);
+                }
+                b';' => self.state = State::Tuple(i, 0),
+                b'm' => {
+                    self.state = State::Default;
+                    let _ = self.set_attr(i, 0);
+                }
+                x if x >= b'0' && x <= b'9' => {
+                    self.state = State::Count(i * 10 + x as i16 - b'0' as i16);
+                }
+                byte => {
+                    let _ = write!(self, "^[[{}{}", i, byte as char);
+                }
+            }
+            State::Tuple(i0, i1) => match byte {
+                b'H' => {
+                    self.state = State::Default;
+                    self.set_cursor(i0, i1);
+                }
+                b'm' => {
+                    self.state = State::Default;
+                    let _ = self.set_attr(i0, i1);
+                }
+                x if x >= b'0' && x <= b'9' => {
+                    self.state = State::Tuple(i0, i1 * 10 + x as i16 - b'0' as i16)
+                }
+                byte => {
+                    let _ = write!(self, "^[[{};{}{}", i0, i1, byte as char);
+                }
+            }
+            State::Default => match byte {
+                b'\0' => {},
+                0x08  => self.back(),
+                b'\t' => {
+                    // tabs are just four spaces, god dammit
+                    let n = 4 - (self.x & 3);
+                    for _ in 0..n {
+                        self.write_byte(b' ');
+                    }
+                }
+                b'\n' => self.endl(),
+                b'\r' => self.cr(),
+                0x1b  => self.state = State::Esc,
+                byte if byte < 0x20 => {
+                    self.write_byte(b'^');
+                    self.write_byte(byte + b'A');
+                }
+                byte => {
+                    let ch = Char(self.color.0, self.color.1, byte);
+                    let offset = self.offset();
+                    unsafe {
+                        self.write_raw(u16::from(ch), offset);
+                    }
+                    self.next();
+                }
             }
         }
     }
@@ -234,7 +391,7 @@ impl Vga {
     }
 }
 
-impl fmt::Write for Vga {
+impl Write for Vga {
     fn write_str(&mut self, s: &str) -> Result<(), fmt::Error> {
         self.write_bytes(s.as_bytes());
         Ok(())
