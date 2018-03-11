@@ -2,25 +2,35 @@
 #![feature(const_fn)]
 #![feature(compiler_builtins_lib)]
 #![feature(core_panic)]
+#![feature(asm)]
+#![feature(naked_functions)]
 #![no_std]
 
 extern crate rlibc;
 extern crate x86;
 extern crate spin;
+#[macro_use]
+extern crate bitflags;
 extern crate compiler_builtins;
 
 use core::fmt;
 
 #[macro_use]
 pub mod macros;
+pub mod interrupt;
 pub mod drivers;
 
 pub mod kernel {
-    use drivers::vga::Vga;
-
     use spin::{Mutex, MutexGuard};
 
-    pub static mut VGA: Option<Mutex<Vga>> = None;
+    use drivers::vga::Vga;
+    use interrupt::lidt;
+    use interrupt::idt::{self, Idt, Idtr};
+
+    static mut VGA: Option<Mutex<Vga>> = None;
+    static mut IDTR: Option<Idtr> = None; 
+    static mut IDT_INNER: [idt::Entry; 256] = [idt::Entry::empty(); 256];
+    static mut IDT: Idt = unsafe { Idt { inner: &mut IDT_INNER } }; // IDT_INNER is known to be valid
 
     pub unsafe fn init_vga() {
         VGA = Some(Mutex::new(Vga::new()));
@@ -38,6 +48,15 @@ pub mod kernel {
                 .and_then(|vga| vga.try_lock())
         }
     }
+
+    pub fn init_idt() {
+        unsafe {
+            IDTR = Some(IDT.idtr());
+            // isr should be set here
+            /* ... */
+            lidt(IDTR.as_ref().unwrap());
+        }
+    }
 }
 
 #[no_mangle]
@@ -45,6 +64,7 @@ pub extern "C" fn kmain() -> ! {
     unsafe {
         kernel::init_vga();
     }
+    kernel::init_idt();
 
     kprintln!("OK");
 
