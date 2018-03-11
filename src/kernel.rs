@@ -27,7 +27,7 @@ pub mod kernel {
     use spin::{Mutex, MutexGuard};
 
     use drivers::vga::Vga;
-    use interrupt::lidt;
+    use interrupt::{lidt, exceptions};
     use interrupt::idt::{self, Idt, Idtr};
     use interrupt::pic::{Pic, Mode as PicMode};
 
@@ -55,9 +55,28 @@ pub mod kernel {
     }
 
     pub unsafe fn init_idt() {
+        IDT.new_exception_handler(0x0,  exceptions::de);
+        IDT.new_exception_handler(0x1,  exceptions::db);
+        IDT.new_exception_handler(0x2,  exceptions::ni);
+        IDT.new_exception_handler(0x3,  exceptions::bp);
+        IDT.new_exception_handler(0x4,  exceptions::of);
+        IDT.new_exception_handler(0x5,  exceptions::br);
+        IDT.new_exception_handler(0x6,  exceptions::ud);
+        IDT.new_exception_handler(0x7,  exceptions::nm);
+        IDT.new_exception_handler(0x8,  exceptions::df);
+        IDT.new_exception_handler(0xa,  exceptions::ts);
+        IDT.new_exception_handler(0xb,  exceptions::np);
+        IDT.new_exception_handler(0xc,  exceptions::ss);
+        IDT.new_exception_handler(0xd,  exceptions::gp);
+        IDT.new_exception_handler(0xe,  exceptions::pf);
+        IDT.new_exception_handler(0x10, exceptions::mf);
+        IDT.new_exception_handler(0x11, exceptions::ac);
+        IDT.new_exception_handler(0x12, exceptions::mc);
+        IDT.new_exception_handler(0x13, exceptions::xm);
+        IDT.new_exception_handler(0x14, exceptions::ve);
+        IDT.new_exception_handler(0x1e, exceptions::sx);
+
         IDTR = Some(IDT.idtr());
-        // isr should be set here
-        /* ... */
         lidt(IDTR.as_ref().unwrap());
     }
 

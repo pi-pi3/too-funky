@@ -2,6 +2,8 @@
 pub mod entry;
 pub use self::entry::*;
 
+use interrupt::{ExceptionHandler, InterruptHandler};
+
 #[repr(C, packed)]
 pub struct Idtr {
     limit: u16,
@@ -26,5 +28,24 @@ impl<'a> Idt<'a> {
 
     pub fn new_handler(&mut self, num: u8, entry: Entry) {
         self.inner[num as usize] = entry;
+    }
+
+    fn new_default_handler(&mut self, num: u8, isr: *const ()) {
+        let entry = EntryBuilder::new()
+            .present()
+            .isr(isr)
+            .selector(0)
+            .ring(RingLevel::Ring0)
+            .gate(Gate::Interrupt)
+            .build();
+        self.new_handler(num, entry);
+    }
+
+    pub fn new_exception_handler<E>(&mut self, num: u8, isr: ExceptionHandler<E>) {
+        self.new_default_handler(num, isr as *const ());
+    }
+
+    pub fn new_interrupt_handler(&mut self, num: u8, isr: InterruptHandler) {
+        self.new_default_handler(num, isr as *const ());
     }
 }

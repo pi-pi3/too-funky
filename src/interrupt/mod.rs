@@ -3,6 +3,7 @@
 pub mod macros;
 pub mod idt;
 pub mod pic;
+pub mod exceptions;
 
 use self::macros::{NoCall, ErrArgs};
 use self::idt::Idtr;
