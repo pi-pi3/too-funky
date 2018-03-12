@@ -22,17 +22,17 @@ pub mod interrupt;
 pub mod segmentation;
 pub mod drivers;
 
-use interrupt::pic::{self, Pic};
+use drivers::pic::{self, Pic};
 
 pub mod kernel {
     use spin::{Mutex, MutexGuard};
 
     use drivers::vga::Vga;
+    use drivers::pic::{Pic, Mode as PicMode};
     use segmentation::{lgdt, reload_segments};
     use segmentation::gdt::{self, Gdt, Gdtr};
     use interrupt::{lidt, exceptions};
     use interrupt::idt::{self, Idt, Idtr};
-    use interrupt::pic::{Pic, Mode as PicMode};
 
     static mut VGA: Option<Mutex<Vga>> = None;
 
