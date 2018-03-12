@@ -12,5 +12,14 @@ pub type InterruptHandler = unsafe extern fn(NoCall);
 pub type ExceptionHandler<E> = unsafe extern fn(ErrArgs<E>, NoCall);
 
 pub unsafe fn lidt(idtr: &Idtr) {
-    asm!("lidt $0": : "*m"(idtr) : "memory" : "intel", "volatile");
+    // compiler bug?
+    // intel syntax equivalent doesn't work
+    //asm!("
+    //        lidt    dword ptr $0
+    //     " : : "*m"(idtr) : "memory" : "intel", "volatile"
+    //);
+    asm!("
+            lidtl   $0
+         " : : "*m"(idtr) : "memory" : "volatile"
+    );
 }

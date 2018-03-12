@@ -45,7 +45,7 @@ impl<'a> Idt<'a> {
             .present()
             .isr(isr)
             .selector(8)
-            .ring(RingLevel::Ring0)
+            .ring(RingLevel::Ring3)
             .gate(Gate::Interrupt)
             .build();
         self.new_handler(num, entry);

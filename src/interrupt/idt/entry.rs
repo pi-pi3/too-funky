@@ -1,7 +1,7 @@
 use core::fmt;
 
 #[repr(C, packed)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Entry {
     offset_1: u16,
     selector: u16,
@@ -24,17 +24,35 @@ impl Entry {
     }
 }
 
+impl fmt::Debug for Entry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unsafe {
+            write!(
+                f,
+                "Entry {} selector: {:04x}, offset: {:04x}{:04x}, zero: {:02x}, flags: {:02x} {}",
+                '{',
+                self.selector,
+                self.offset_2,
+                self.offset_1,
+                self.zero,
+                self.flags,
+                '}',
+            )
+        }
+    }
+}
+
 impl fmt::LowerHex for Entry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         unsafe {
             write!(
                 f,
-                "{:04x}{:04x}{:02x}{:02x}{:04x}",
-                self.offset_1,
-                self.selector,
-                self.zero,
-                self.flags,
+                "{:04x}{:02x}{:02x}{:04x}{:04x}",
                 self.offset_2,
+                self.flags,
+                self.zero,
+                self.selector,
+                self.offset_1,
             )
         }
     }

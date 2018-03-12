@@ -3,8 +3,6 @@ bits 32
 ;; paging.asm
 extern setup_paging
 extern unmap_id
-;; gdt.asm
-extern setup_gdt
 
 ;; lib.rs
 extern kmain
@@ -32,9 +30,6 @@ _start:
         push    eax ; mb2 magic
 
         call    unmap_id
-
-        ;; sets up gdt
-        call    setup_gdt
 
         sti
 

@@ -19,6 +19,7 @@ use core::fmt;
 pub mod macros;
 #[macro_use]
 pub mod interrupt;
+pub mod segmentation;
 pub mod drivers;
 
 use interrupt::pic::{self, Pic};
@@ -27,14 +28,22 @@ pub mod kernel {
     use spin::{Mutex, MutexGuard};
 
     use drivers::vga::Vga;
+    use segmentation::{lgdt, reload_segments};
+    use segmentation::gdt::{self, Gdt, Gdtr};
     use interrupt::{lidt, exceptions};
     use interrupt::idt::{self, Idt, Idtr};
     use interrupt::pic::{Pic, Mode as PicMode};
 
     static mut VGA: Option<Mutex<Vga>> = None;
+
+    static mut GDTR: Option<Gdtr> = None; 
+    static mut GDT_INNER: [gdt::Entry; 8] = [gdt::Entry::empty(); 8];
+    static mut GDT: Gdt = unsafe { Gdt { inner: &mut GDT_INNER } }; // GDT_INNER is known to be valid
+
     static mut IDTR: Option<Idtr> = None; 
     static mut IDT_INNER: [idt::Entry; 256] = [idt::Entry::empty(); 256];
     static mut IDT: Idt = unsafe { Idt { inner: &mut IDT_INNER } }; // IDT_INNER is known to be valid
+
     static mut PIC: Option<Mutex<(Pic, Pic)>> = None;
 
     pub unsafe fn init_vga() {
@@ -52,6 +61,39 @@ pub mod kernel {
             VGA.as_ref()
                 .and_then(|vga| vga.try_lock())
         }
+    }
+
+    pub unsafe fn init_gdt() {
+        GDT.new_entry(0, gdt::Entry::empty());
+        GDT.new_entry(
+            0x8,
+            gdt::EntryBuilder::new()
+                .base(0)
+                .limit(0xfffff)
+                .granularity(gdt::Granularity::Page)
+                .size(32)
+                .present()
+                .ring(gdt::RingLevel::Ring0)
+                .executable()
+                .read_write()
+                .build()
+        );
+        GDT.new_entry(
+            0x10,
+            gdt::EntryBuilder::new()
+                .base(0)
+                .limit(0xfffff)
+                .granularity(gdt::Granularity::Page)
+                .size(32)
+                .present()
+                .ring(gdt::RingLevel::Ring0)
+                .read_write()
+                .build()
+        );
+
+        GDTR = Some(GDT.gdtr());
+        lgdt(GDTR.as_ref().unwrap());
+        reload_segments(0x8, 0x10); // this causes a hardware exception for now for some reason
     }
 
     pub unsafe fn init_idt() {
@@ -128,6 +170,14 @@ pub extern "C" fn kmain() -> ! {
     unsafe {
         kernel::init_vga();
         kprint!("vga... ");
+        kprintln!(
+            "{green}[OK]{reset}",
+            green = "\x1b[32m",
+            reset = "\x1b[0m"
+        );
+
+        kprint!("gdt... ");
+        kernel::init_gdt();
         kprintln!(
             "{green}[OK]{reset}",
             green = "\x1b[32m",
