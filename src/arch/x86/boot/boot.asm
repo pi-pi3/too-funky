@@ -36,11 +36,6 @@ _start:
         ;; sets up gdt
         call    setup_gdt
 
-        ;; mask all hardware interrupts
-        mov     al, 0ffh
-        out     0x21, al
-        out     0xa1, al
-
         sti
 
         pop     eax
