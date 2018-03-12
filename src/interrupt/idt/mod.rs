@@ -1,4 +1,5 @@
 use core::mem;
+use core::fmt;
 
 pub mod entry;
 pub use self::entry::*;
@@ -9,6 +10,14 @@ use interrupt::{ExceptionHandler, InterruptHandler};
 pub struct Idtr {
     limit: u16,
     base: u32,
+}
+
+impl fmt::LowerHex for Idtr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unsafe {
+            write!(f, "{:04x}{:08x}", self.limit, self.base)
+        }
+    }
 }
 
 pub struct Idt<'a> {

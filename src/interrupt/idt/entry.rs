@@ -1,3 +1,4 @@
+use core::fmt;
 
 #[repr(C, packed)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -19,6 +20,22 @@ impl Entry {
             zero: 0,
             flags: 0,
             offset_2: 0,
+        }
+    }
+}
+
+impl fmt::LowerHex for Entry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unsafe {
+            write!(
+                f,
+                "{:04x}{:04x}{:02x}{:02x}{:04x}",
+                self.offset_1,
+                self.selector,
+                self.zero,
+                self.flags,
+                self.offset_2,
+            )
         }
     }
 }
