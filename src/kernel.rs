@@ -229,9 +229,9 @@ pub extern fn panic_fmt(msg: fmt::Arguments,
                         col: u32) -> ! {
     use core::fmt::Write;
     kernel::try_vga().map(|mut vga| {
-        let _ = vga.write_str("kernel panicked at '");
+        let _ = vga.write_str("\x1b[0;31mkernel panicked at '");
         let _ = vga.write_fmt(msg);
-        let _ = write!(vga, "', {}:{}:{}", file, line, col);
+        let _ = write!(vga, "', {}:{}:{}\x1b[0m", file, line, col);
     });
 
     loop {}
