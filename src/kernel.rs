@@ -123,6 +123,7 @@ pub mod kernel {
         IDT.new_exception_handler(0x1e, exceptions::sx);
 
         IDT.new_interrupt_handler(0x21, keyboard::handler);
+        IDT.new_interrupt_handler(0x80, ::syscall::handler);
 
         IDTR = Some(IDT.idtr());
         lidt(IDTR.as_ref().unwrap());
@@ -212,7 +213,7 @@ pub extern "C" fn kmain() -> ! {
             reset = "\x1b[0m"
         );
 
-        keyboard::init_keys(0, 250, Scanset::Set1);
+        //keyboard::init_keys(0, 250, Scanset::Set1);
 
         pic.0.clear_mask(1);
 
