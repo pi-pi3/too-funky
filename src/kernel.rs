@@ -4,6 +4,7 @@
 #![feature(core_panic)]
 #![feature(asm)]
 #![feature(naked_functions)]
+#![feature(core_intrinsics)]
 #![no_std]
 
 extern crate rlibc;
@@ -23,12 +24,14 @@ pub mod segmentation;
 pub mod drivers;
 
 use drivers::pic::{self, Pic};
+use drivers::keyboard::{self, Scanset};
 
 pub mod kernel {
     use spin::{Mutex, MutexGuard};
 
     use drivers::vga::Vga;
     use drivers::pic::{Pic, Mode as PicMode};
+    use drivers::keyboard;
     use segmentation::{lgdt, reload_segments};
     use segmentation::gdt::{self, Gdt, Gdtr};
     use interrupt::{lidt, exceptions};
@@ -118,6 +121,8 @@ pub mod kernel {
         IDT.new_exception_handler(0x14, exceptions::ve);
         IDT.new_exception_handler(0x1e, exceptions::sx);
 
+        IDT.new_interrupt_handler(0x21, keyboard::handler);
+
         IDTR = Some(IDT.idtr());
         lidt(IDTR.as_ref().unwrap());
     }
@@ -205,6 +210,10 @@ pub extern "C" fn kmain() -> ! {
             green = "\x1b[32m",
             reset = "\x1b[0m"
         );
+
+        keyboard::init_keys(0, 250, Scanset::Set1);
+
+        pic.0.clear_mask(1);
 
         irq::enable();
     }
