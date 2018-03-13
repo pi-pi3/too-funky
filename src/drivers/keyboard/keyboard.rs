@@ -262,14 +262,19 @@ impl<'a> Keyboard<'a> {
         size
     }
 
-    pub fn input(&mut self, scancode: Scancode) {
+    pub fn last(&mut self) -> Option<Keycode> {
+        let input_size = self.input_size;
+        if input_size > 0 {
+            self.input_size -= 1;
+            Some(self.input[input_size - 1])
+        } else {
+            None
+        }
+    }
+
+    pub fn input(&mut self, scancode: Scancode) -> Option<Keycode> {
         if scancode.is_valid() {
             let keycode = Keycode::from_scancode_with_scanset(scancode.unwrap(), self.set);
-            if scancode.is_pressed() {
-                kprint!("Press({}) ", keycode);
-            } else {
-                kprint!("Release({}) ", keycode);
-            }
 
             let mod_bit = match keycode {
                 Keycode::ControlLeft => Some(Mod::CONTROL_LEFT),
@@ -291,7 +296,15 @@ impl<'a> Keyboard<'a> {
                 self.input[self.input_size] = keycode;
                 self.input_size += 1;
             }
+
+            Some(keycode)
+        } else {
+            None
         }
+    }
+
+    pub fn modifiers(&self) -> Mod {
+        self.modifier
     }
 
     pub fn is_pressed(&self, key: Keycode) -> bool {

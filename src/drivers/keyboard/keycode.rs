@@ -165,7 +165,6 @@ impl Keycode {
             0xe1 => unimplemented!(),
             byte if byte >= 0x80 => SCANSET_1[byte as usize - 0x80],
             byte => SCANSET_1[byte as usize],
-            _ => Keycode::Unknown
         }
     }
 

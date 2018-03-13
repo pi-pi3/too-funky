@@ -25,7 +25,7 @@ pub mod drivers;
 pub mod syscall;
 
 use drivers::pic::{self, Pic};
-use drivers::keyboard::{self, Scanset};
+use drivers::keyboard::{self, Scanset, Keycode};
 
 pub mod kernel {
     use spin::{Mutex, MutexGuard};
@@ -222,7 +222,13 @@ pub extern "C" fn kmain() -> ! {
         irq::enable();
     }
 
-    loop {}
+    kprint!("> ");
+    loop {
+        match keyboard::poll() {
+            Keycode::Enter => kprint!("\n> "),
+            k => kprint!("{}", k),
+        }
+    }
 }
 
 #[lang = "panic_fmt"]
