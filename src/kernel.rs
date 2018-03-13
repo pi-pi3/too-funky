@@ -22,6 +22,7 @@ pub mod macros;
 pub mod interrupt;
 pub mod segmentation;
 pub mod drivers;
+pub mod syscall;
 
 use drivers::pic::{self, Pic};
 use drivers::keyboard::{self, Scanset};
