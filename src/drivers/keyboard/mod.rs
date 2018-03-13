@@ -21,6 +21,11 @@ interrupt_handlers! {
             .map(|mut keyboard| {
                 keyboard.input(key);
             });
+
+        use kernel;
+        let mut pic = kernel::try_pic().unwrap();
+        pic.0.eoi();
+        pic.1.eoi();
     }
 }
 

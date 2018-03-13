@@ -201,21 +201,23 @@ pub extern "C" fn kmain() -> ! {
             reset = "\x1b[0m"
         );
 
-        kprint!("pic... ");
-        kernel::init_pic(Pic::new(pic::PIC1), Pic::new(pic::PIC2));
+        keyboard::init_keys(0, 250, Scanset::Set1);
 
-        let mut pic = kernel::pic();
-        pic.0.set_all();
-        pic.1.set_all();
-        kprintln!(
-            "{green}[OK]{reset}",
-            green = "\x1b[32m",
-            reset = "\x1b[0m"
-        );
+        {
+            kprint!("pic... ");
+            kernel::init_pic(Pic::new(pic::PIC1), Pic::new(pic::PIC2));
 
-        //keyboard::init_keys(0, 250, Scanset::Set1);
+            let mut pic = kernel::pic();
+            pic.0.set_all();
+            pic.1.set_all();
+            kprintln!(
+                "{green}[OK]{reset}",
+                green = "\x1b[32m",
+                reset = "\x1b[0m"
+            );
 
-        pic.0.clear_mask(1);
+            pic.0.clear_mask(1);
+        }
 
         irq::enable();
     }

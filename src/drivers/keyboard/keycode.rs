@@ -161,13 +161,13 @@ impl Keycode {
         match scancode[0] {
             0xe0 => unimplemented!(),
             0xe1 => unimplemented!(),
-            0xf0 if (scancode[1] as usize) < SS1_KEYS => SCANSET_1[scancode[1] as usize],
-            byte if (byte as usize) < SS1_KEYS => SCANSET_1[byte as usize],
+            byte if byte >= 0x80 => SCANSET_1[byte as usize - 0x80],
+            byte => SCANSET_1[byte as usize],
             _ => Keycode::Unknown
         }
     }
 
-    pub fn into_byte(&self) -> u8 {
+    pub fn as_byte(&self) -> u8 {
         // this might be unstable,
         // but it might be fine,
         // because it doesn't really matter what this returns,
@@ -177,11 +177,17 @@ impl Keycode {
             intrinsics::discriminant_value(self) as u8
         }
     }
+
+    pub fn into_char(self) -> Option<u8> {
+        match CHARS[self.as_byte() as usize] {
+            0xff => None,
+            ch => Some(ch),
+        }
+    }
 }
 
 // us qwerty
-const SS1_KEYS: usize = 0x59;
-static SCANSET_1: [Keycode; SS1_KEYS] = [
+static SCANSET_1: [Keycode; 0x80] = [
     Keycode::Unknown, // 0x00
     Keycode::Escape, // 0x01
     Keycode::One, // 0x02
@@ -271,4 +277,188 @@ static SCANSET_1: [Keycode; SS1_KEYS] = [
     Keycode::Unknown, // 0x56
     Keycode::F11, // 0x57
     Keycode::F12, // 0x58
+
+    // filler
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+    Keycode::Unknown,
+];
+
+static CHARS: [u8; 0x80] = [
+    b'0',
+    b'1',
+    b'2',
+    b'3',
+    b'4',
+    b'5',
+    b'6',
+    b'7',
+    b'8',
+    b'9',
+
+    b'a',
+    b'b',
+    b'c',
+    b'd',
+    b'e',
+    b'f',
+    b'g',
+    b'h',
+    b'i',
+    b'j',
+    b'k',
+    b'l',
+    b'm',
+    b'n',
+    b'o',
+    b'p',
+    b'q',
+    b'r',
+    b's',
+    b't',
+    b'u',
+    b'v',
+    b'w',
+    b'x',
+    b'y',
+    b'z',
+
+    b'+',
+    b'-',
+    b'*',
+    b'=',
+
+    b'\\',
+    b'/',
+    b'[',
+    b']',
+    b';',
+    b':',
+    b'\'',
+    b'"',
+    b'`',
+    b',',
+    b'.',
+
+    b'\n',
+    b' ',
+    b'\t',
+    0x08,
+
+    b'+',
+    b'-',
+    b'*',
+    b'/',
+    b',',
+    b'.',
+
+    b'0',
+    b'1',
+    b'2',
+    b'3',
+    b'4',
+    b'5',
+    b'6',
+    b'7',
+    b'8',
+    b'9',
+
+    0xff,
+    0xff,
+    0xff,
+
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+
+    0xff,
+
+    // filler bytes
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
+    0xff,
 ];

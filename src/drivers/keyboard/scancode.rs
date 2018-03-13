@@ -41,7 +41,12 @@ impl Scancode {
     }
 
     pub unsafe fn poll(port: u16) -> Scancode {
-        match io::inb(port) {
+        let mut byte = io::inb(port);
+        while byte == 0 {
+            byte = io::inb(port)
+        }
+
+        match byte {
             0xe0 => Scancode::poll_long(port),
             0xe1 => Scancode::poll_very_long(port),
             byte if byte < 0x80 => Scancode::Pressed([byte, 0, 0, 0, 0, 0, 0, 0]),
