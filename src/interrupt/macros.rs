@@ -24,8 +24,15 @@ pub enum NoCall {}
 
 #[macro_export]
 macro_rules! inner_func {
-    ($func:ident, $( $arg:ident : $type:ty, )* $body:block) => {
-        unsafe fn $func ( $( $arg : $type ),* ) {
+    ($func:ident, $( $errarg:ident : $errreg:ident ),* ; $( $arg:ident : $reg:ident, )* $body:block) => {
+        unsafe fn $func ( $( $errarg : usize ),* ) {
+            let mut regs = $crate::interrupt::macros::Args::default();
+            regs!(regs);
+
+            $(
+                let $arg = regs.$reg;
+            )*
+
             $body
         }
     }
@@ -68,13 +75,12 @@ macro_rules! interrupt_handler {
     } => {
         #[naked]
         pub unsafe extern fn $func ( _: $crate::interrupt::macros::NoCall ) {
-            inner_func!(inner, $( $arg : usize, )* $body);
-            let mut regs = $crate::interrupt::macros::Args::default();
-            regs!(regs);
             pushad!();
-            inner($( regs.$reg ),*);
+            inner_func!(inner, ; $( $arg : $reg, )* $body);
+            inner();
             popad!();
             iretd!();
+            unreachable!();
         }
     }
 }
@@ -87,13 +93,12 @@ macro_rules! exception_handler {
         #[naked]
         #[allow(unused_variables)]
         pub unsafe extern fn $func ( args: $crate::interrupt::macros::ErrArgs<$err>, _: $crate::interrupt::macros::NoCall ) {
-            inner_func!(inner, $( $errarg : usize, )* $( $arg : usize, )* $body);
-            let mut regs = $crate::interrupt::macros::Args::default();
-            regs!(regs);
             pushad!();
-            inner($( args.$errreg, )* $( regs.$reg),*);
+            inner_func!(inner, $( $errarg : $errreg ),* ; $( $arg : $reg, )* $body);
+            inner($( args.$errarg ),*);
             popad!();
             iretd!();
+            unreachable!();
         }
     }
 }
