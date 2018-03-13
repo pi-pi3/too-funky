@@ -266,9 +266,9 @@ impl<'a> Keyboard<'a> {
         if scancode.is_valid() {
             let keycode = Keycode::from_scancode_with_scanset(scancode.unwrap(), self.set);
             if scancode.is_pressed() {
-                kprint!("Press({:?}) ", keycode);
+                kprint!("Press({}) ", keycode);
             } else {
-                kprint!("Release({:?}) ", keycode);
+                kprint!("Release({}) ", keycode);
             }
 
             let mod_bit = match keycode {

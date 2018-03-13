@@ -1,3 +1,5 @@
+use core::fmt::{self, Display};
+
 use drivers::keyboard::Scanset;
 
 bitflags! {
@@ -183,6 +185,14 @@ impl Keycode {
             0xff => None,
             ch => Some(ch),
         }
+    }
+}
+
+impl Display for Keycode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.into_char()
+            .map(|ch| write!(f, "{}", ch as char))
+            .unwrap_or_else(|| write!(f, "<{:?}>", self))
     }
 }
 
