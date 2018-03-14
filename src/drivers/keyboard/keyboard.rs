@@ -292,7 +292,7 @@ impl<'a> Keyboard<'a> {
             mod_bit.map(|bit| self.modifier.set(bit, scancode.is_pressed()));
 
             self.keys[keycode.as_byte() as usize] = scancode.is_pressed();
-            if self.input_size < self.input.len() {
+            if scancode.is_pressed() && self.input_size < self.input.len() {
                 self.input[self.input_size] = keycode;
                 self.input_size += 1;
             }
