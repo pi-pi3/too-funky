@@ -16,7 +16,7 @@ ISO:=isofiles
 all: $(IMAGE)
 
 run: $(IMAGE)
-	$(RUN) $(QEMU) -cdrom $(IMAGE)
+	$(RUN) $(QEMU) $(QEMU_FLAGS) -cdrom $(IMAGE)
 
 $(LIBK): $(RS_SRC) Cargo.toml
 	$(RUN) RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET) $(CARGO_FLAGS)

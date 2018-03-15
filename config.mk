@@ -46,6 +46,7 @@ ASFLAGS+=
 LDFLAGS+=
 RELEASE:=release
 CARGO_FLAGS+=--release
+QEMU_FLAGS+=
 else
 CFLAGS+=-O0 -DDEBUG
 CXXFLAGS+=$(CFLAGS)
@@ -53,6 +54,7 @@ ASFLAGS+=
 LDFLAGS+=
 RELEASE:=debug
 CARGO_FLAGS+=
+QEMU_FLAGS+=-d int -no-reboot
 endif
 
 ifdef DRYRUN
