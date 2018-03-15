@@ -93,4 +93,19 @@ impl Allocator {
 
         None
     }
+
+    // returns the count of free frames
+    pub fn free(&self) -> usize {
+        let mut count = 0;
+
+        for idx in 0 .. LEN {
+            count += self.bitmap[idx].count_zeros() as usize;
+        }
+
+        count
+    }
+
+    pub fn used(&self) -> usize {
+        1024 - self.free()
+    }
 }
