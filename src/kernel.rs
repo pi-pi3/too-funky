@@ -263,14 +263,14 @@ pub fn kmain() {
             reset = "\x1b[0m"
         );
 
-        kprint!("vga... ");
+        kprint!("video graphics array driver... ");
         kprintln!(
             "{green}[OK]{reset}",
             green = "\x1b[32m",
             reset = "\x1b[0m"
         );
 
-        kprint!("gdt... ");
+        kprint!("global descriptor table... ");
         kernel::init_gdt();
         kprintln!(
             "{green}[OK]{reset}",
@@ -278,7 +278,7 @@ pub fn kmain() {
             reset = "\x1b[0m"
         );
 
-        kprint!("idt... ");
+        kprint!("interrupt descriptor table... ");
         kernel::init_idt();
         kprintln!(
             "{green}[OK]{reset}",
@@ -301,7 +301,7 @@ pub fn kmain() {
         );
 
         {
-            kprint!("pic... ");
+            kprint!("programmable interrupt controller... ");
             kernel::init_pic(Pic::new(pic::PIC1), Pic::new(pic::PIC2));
 
             let mut pic = kernel::pic();
