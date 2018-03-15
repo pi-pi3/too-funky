@@ -80,7 +80,7 @@ impl Allocator {
                 for bit in 0 .. USIZE_BITS {
                     let bit = 1 << bit;
                     if word & bit == 0 {
-                        self.bitmap |= bit;
+                        self.bitmap[idx] |= bit;
                         let addr = idx << 27 | bit << 22;
                         let frame = Frame {
                             addr: Virtual::new(addr),
