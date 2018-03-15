@@ -6,7 +6,7 @@ use super::*;
 mod consts {
     pub const PORT: u16 = 0x60;
     pub const ATTEMPT_COUNT: usize = 3;
-    
+
     pub const ECHO: u8 = 0xee;
     pub const LED: u8 = 0xed;
     pub const SCANSET: u8 = 0xf0; // 0 = get, 1, 2, 3 = set x
@@ -23,7 +23,7 @@ mod consts {
     pub const KEY_MAKE_REL: u8 = 0xfc;
     pub const KEY_MAKE: u8 = 0xfd;
     pub const RESET: u8 = 0xff;
-    
+
     pub const ERR_1: u8 = 0x00;
     pub const ERR_2: u8 = 0xff;
     pub const TEST_PASS: u8 = 0xaa;
@@ -49,8 +49,8 @@ bitflags! {
 pub enum Scanset {
     // only set 1 is supported
     Set1,
-    // Set2,
-    // Set3,
+    /* Set2,
+     * Set3, */
 }
 
 impl Default for Scanset {
@@ -63,8 +63,8 @@ impl Scanset {
     fn into_byte(self) -> u8 {
         match self {
             Scanset::Set1 => 1,
-            // Scanset::Set2 => 2,
-            // Scanset::Set3 => 3,
+            /* Scanset::Set2 => 2,
+             * Scanset::Set3 => 3, */
         }
     }
 }
@@ -96,24 +96,29 @@ enum Command {
 impl Command {
     pub fn into_bytes(self) -> (u8, Option<u8>) {
         match self {
-            Command::Echo                   => (ECHO, None),
-            Command::Led(led)               => (LED, Some(led.bits())),
-            Command::GetScanset             => (SCANSET, Some(0)),
-            Command::SetScanset(set)        => (SCANSET, Some(set.into_byte())),
-            Command::Idty                   => (IDTY, None),
-            Command::Typematic(rep, delay)  => (TYPE, Some((rep & 0x1f) | (((delay / 250 - 1) & 0x3) << 5) as u8)),
-            Command::Enable                 => (ENABLE, None),
-            Command::Disable                => (DISABLE, None),
-            Command::Default                => (DEFAULT, None),
-            Command::AllTypematic           => (ALL_TYPEMATIC, None),
-            Command::AllMakeRel             => (ALL_MAKE_REL, None),
-            Command::AllMake                => (ALL_MAKE, None),
-            Command::AllTpmtMakeRel         => (ALL_TPMT_MAKE_REL, None),
-            // Command::KeyTypematic(code)     => (KEY_TYPEMATIC, Some(code.into_byte())),
-            // Command::KeyMakeRel(code)       => (KEY_MAKE_REL, Some(code.into_byte())),
-            // Command::KeyMake(code)          => (KEY_MAKE, Some(code.into_byte())),
-            Command::Resend                 => (RESET, None),
-            Command::Reset                  => (RESET, None),
+            Command::Echo => (ECHO, None),
+            Command::Led(led) => (LED, Some(led.bits())),
+            Command::GetScanset => (SCANSET, Some(0)),
+            Command::SetScanset(set) => (SCANSET, Some(set.into_byte())),
+            Command::Idty => (IDTY, None),
+            Command::Typematic(rep, delay) => (
+                TYPE,
+                Some((rep & 0x1f) | (((delay / 250 - 1) & 0x3) << 5) as u8),
+            ),
+            Command::Enable => (ENABLE, None),
+            Command::Disable => (DISABLE, None),
+            Command::Default => (DEFAULT, None),
+            Command::AllTypematic => (ALL_TYPEMATIC, None),
+            Command::AllMakeRel => (ALL_MAKE_REL, None),
+            Command::AllMake => (ALL_MAKE, None),
+            Command::AllTpmtMakeRel => (ALL_TPMT_MAKE_REL, None),
+            // Command::KeyTypematic(code)     => (KEY_TYPEMATIC,
+            // Some(code.into_byte())), Command::KeyMakeRel(code)
+            // => (KEY_MAKE_REL, Some(code.into_byte())),
+            // Command::KeyMake(code)          => (KEY_MAKE,
+            // Some(code.into_byte())),
+            Command::Resend => (RESET, None),
+            Command::Reset => (RESET, None),
         }
     }
 }
@@ -131,17 +136,17 @@ enum Response {
 }
 
 impl Response {
-    pub fn from_byte(byte:u8) -> Option<Response> {
+    pub fn from_byte(byte: u8) -> Option<Response> {
         match byte {
-            ACK          => Some(Response::Ack),
-            RESEND       => Some(Response::Resend),
-            ECHO         => Some(Response::Echo),
-            ERR_1        => Some(Response::Err1),
-            ERR_2        => Some(Response::Err2),
-            TEST_PASS    => Some(Response::Pass),
-            TEST_FAIL_1  => Some(Response::Fail1),
-            TEST_FAIL_2  => Some(Response::Fail2),
-            _  => None,
+            ACK => Some(Response::Ack),
+            RESEND => Some(Response::Resend),
+            ECHO => Some(Response::Echo),
+            ERR_1 => Some(Response::Err1),
+            ERR_2 => Some(Response::Err2),
+            TEST_PASS => Some(Response::Pass),
+            TEST_FAIL_1 => Some(Response::Fail1),
+            TEST_FAIL_2 => Some(Response::Fail2),
+            _ => None,
         }
     }
 }
@@ -164,7 +169,8 @@ impl<'a> Keyboard<'a> {
         delay: u16,
         keys: &'a mut [bool],
         input: &'a mut [Keycode],
-        set: Scanset) -> Option<Keyboard<'a>> {
+        set: Scanset,
+    ) -> Option<Keyboard<'a>> {
         let mut key = Keyboard {
             port: PORT,
             set,
@@ -178,7 +184,9 @@ impl<'a> Keyboard<'a> {
         };
 
         key.reset()
-            .map(|key| { key.reinit(); })
+            .map(|key| {
+                key.reinit();
+            })
             .map(|_| key)
     }
 
@@ -223,12 +231,16 @@ impl<'a> Keyboard<'a> {
     }
 
     fn send(&mut self, com: Command) -> Result<Response, Option<Response>> {
-        unsafe fn inner(port: u16, com: Command, attempt: usize) -> Result<Response, Option<Response>> {
+        unsafe fn inner(
+            port: u16,
+            com: Command,
+            attempt: usize,
+        ) -> Result<Response, Option<Response>> {
             if attempt > ATTEMPT_COUNT {
                 return Err(None);
             }
 
-            //while io::inb(port) 
+            //while io::inb(port)
             let (com, arg) = com.into_bytes();
             io::outb(port, com);
             arg.map(|arg| io::outb(port, arg));
@@ -274,7 +286,10 @@ impl<'a> Keyboard<'a> {
 
     pub fn input(&mut self, scancode: Scancode) -> Option<Keycode> {
         if scancode.is_valid() {
-            let keycode = Keycode::from_scancode_with_scanset(scancode.unwrap(), self.set);
+            let keycode = Keycode::from_scancode_with_scanset(
+                scancode.unwrap(),
+                self.set,
+            );
 
             let mod_bit = match keycode {
                 Keycode::ControlLeft => Some(Mod::CONTROL_LEFT),

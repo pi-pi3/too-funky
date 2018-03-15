@@ -8,12 +8,12 @@
 #![feature(fn_must_use)]
 #![no_std]
 
-extern crate rlibc;
-extern crate x86;
-extern crate spin;
 #[macro_use]
 extern crate bitflags;
 extern crate compiler_builtins;
+extern crate rlibc;
+extern crate spin;
+extern crate x86;
 
 use core::fmt;
 
@@ -27,7 +27,7 @@ pub mod drivers;
 pub mod syscall;
 
 use drivers::pic::{self, Pic};
-use drivers::keyboard::{self, Scanset, Keycode};
+use drivers::keyboard::{self, Keycode, Scanset};
 
 pub mod kernel {
     use spin::{Mutex, MutexGuard};
@@ -35,24 +35,32 @@ pub mod kernel {
     use paging::addr::*;
     use paging::table::InactiveTable;
     use drivers::vga::Vga;
-    use drivers::pic::{Pic, Mode as PicMode};
+    use drivers::pic::{Mode as PicMode, Pic};
     use drivers::keyboard;
     use segmentation::{lgdt, reload_segments};
     use segmentation::gdt::{self, Gdt, Gdtr};
-    use interrupt::{lidt, exceptions};
+    use interrupt::{exceptions, lidt};
     use interrupt::idt::{self, Idt, Idtr};
 
     const KERNEL_BASE: usize = 0xe0000000;
 
     static mut VGA: Option<Mutex<Vga>> = None;
 
-    static mut GDTR: Option<Gdtr> = None; 
+    static mut GDTR: Option<Gdtr> = None;
     static mut GDT_INNER: [gdt::Entry; 8] = [gdt::Entry::empty(); 8];
-    static mut GDT: Gdt = unsafe { Gdt { inner: &mut GDT_INNER } }; // GDT_INNER is known to be valid
+    static mut GDT: Gdt = unsafe {
+        Gdt {
+            inner: &mut GDT_INNER,
+        }
+    }; // GDT_INNER is known to be valid
 
-    static mut IDTR: Option<Idtr> = None; 
+    static mut IDTR: Option<Idtr> = None;
     static mut IDT_INNER: [idt::Entry; 256] = [idt::Entry::empty(); 256];
-    static mut IDT: Idt = unsafe { Idt { inner: &mut IDT_INNER } }; // IDT_INNER is known to be valid
+    static mut IDT: Idt = unsafe {
+        Idt {
+            inner: &mut IDT_INNER,
+        }
+    }; // IDT_INNER is known to be valid
 
     static mut PIC: Option<Mutex<(Pic, Pic)>> = None;
 
@@ -61,12 +69,13 @@ pub mod kernel {
         use kernel::KERNEL_BASE;
         use paging::table::Entry;
 
-        extern {
+        extern "C" {
             #[no_mangle]
             static mut KERNEL_MAP_INNER: [Entry; 1024];
         }
 
-        static mut KERNEL_MAP: Option<*mut [Entry; 1024]> = unsafe { Some(&mut KERNEL_MAP_INNER as * mut _) };
+        static mut KERNEL_MAP: Option<*mut [Entry; 1024]> =
+            unsafe { Some(&mut KERNEL_MAP_INNER as *mut _) };
 
         pub unsafe fn take_kernel() -> &'static mut [Entry] {
             let ptr = KERNEL_MAP.take().unwrap() as usize - KERNEL_BASE;
@@ -126,16 +135,11 @@ pub mod kernel {
     }
 
     pub unsafe fn vga() -> MutexGuard<'static, Vga> {
-        VGA.as_ref()
-            .unwrap()
-            .lock()
+        VGA.as_ref().unwrap().lock()
     }
 
     pub fn try_vga() -> Option<MutexGuard<'static, Vga>> {
-        unsafe {
-            VGA.as_ref()
-                .and_then(|vga| vga.try_lock())
-        }
+        unsafe { VGA.as_ref().and_then(|vga| vga.try_lock()) }
     }
 
     pub unsafe fn init_gdt() {
@@ -151,7 +155,7 @@ pub mod kernel {
                 .ring(gdt::RingLevel::Ring0)
                 .executable()
                 .read_write()
-                .build()
+                .build(),
         );
         GDT.new_entry(
             0x10,
@@ -163,29 +167,29 @@ pub mod kernel {
                 .present()
                 .ring(gdt::RingLevel::Ring0)
                 .read_write()
-                .build()
+                .build(),
         );
 
         GDTR = Some(GDT.gdtr());
         lgdt(GDTR.as_ref().unwrap());
-        reload_segments(0x8, 0x10); // this causes a hardware exception for now for some reason
+        reload_segments(0x8, 0x10);
     }
 
     pub unsafe fn init_idt() {
-        IDT.new_exception_handler(0x0,  exceptions::de);
-        IDT.new_exception_handler(0x1,  exceptions::db);
-        IDT.new_exception_handler(0x2,  exceptions::ni);
-        IDT.new_exception_handler(0x3,  exceptions::bp);
-        IDT.new_exception_handler(0x4,  exceptions::of);
-        IDT.new_exception_handler(0x5,  exceptions::br);
-        IDT.new_exception_handler(0x6,  exceptions::ud);
-        IDT.new_exception_handler(0x7,  exceptions::nm);
-        IDT.new_exception_handler(0x8,  exceptions::df);
-        IDT.new_exception_handler(0xa,  exceptions::ts);
-        IDT.new_exception_handler(0xb,  exceptions::np);
-        IDT.new_exception_handler(0xc,  exceptions::ss);
-        IDT.new_exception_handler(0xd,  exceptions::gp);
-        IDT.new_exception_handler(0xe,  exceptions::pf);
+        IDT.new_exception_handler(0x0, exceptions::de);
+        IDT.new_exception_handler(0x1, exceptions::db);
+        IDT.new_exception_handler(0x2, exceptions::ni);
+        IDT.new_exception_handler(0x3, exceptions::bp);
+        IDT.new_exception_handler(0x4, exceptions::of);
+        IDT.new_exception_handler(0x5, exceptions::br);
+        IDT.new_exception_handler(0x6, exceptions::ud);
+        IDT.new_exception_handler(0x7, exceptions::nm);
+        IDT.new_exception_handler(0x8, exceptions::df);
+        IDT.new_exception_handler(0xa, exceptions::ts);
+        IDT.new_exception_handler(0xb, exceptions::np);
+        IDT.new_exception_handler(0xc, exceptions::ss);
+        IDT.new_exception_handler(0xd, exceptions::gp);
+        IDT.new_exception_handler(0xe, exceptions::pf);
         IDT.new_exception_handler(0x10, exceptions::mf);
         IDT.new_exception_handler(0x11, exceptions::ac);
         IDT.new_exception_handler(0x12, exceptions::mc);
@@ -228,16 +232,11 @@ pub mod kernel {
     }
 
     pub unsafe fn pic() -> MutexGuard<'static, (Pic, Pic)> {
-        PIC.as_ref()
-            .unwrap()
-            .lock()
+        PIC.as_ref().unwrap().lock()
     }
 
     pub fn try_pic() -> Option<MutexGuard<'static, (Pic, Pic)>> {
-        unsafe {
-            PIC.as_ref()
-                .and_then(|pic| pic.try_lock())
-        }
+        unsafe { PIC.as_ref().and_then(|pic| pic.try_lock()) }
     }
 }
 
@@ -257,48 +256,24 @@ pub fn kmain() {
         kernel::init_vga();
 
         kprint!("paging... ");
-        kprintln!(
-            "{green}[OK]{reset}",
-            green = "\x1b[32m",
-            reset = "\x1b[0m"
-        );
+        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprint!("video graphics array driver... ");
-        kprintln!(
-            "{green}[OK]{reset}",
-            green = "\x1b[32m",
-            reset = "\x1b[0m"
-        );
+        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprint!("global descriptor table... ");
         kernel::init_gdt();
-        kprintln!(
-            "{green}[OK]{reset}",
-            green = "\x1b[32m",
-            reset = "\x1b[0m"
-        );
+        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprint!("interrupt descriptor table... ");
         kernel::init_idt();
-        kprintln!(
-            "{green}[OK]{reset}",
-            green = "\x1b[32m",
-            reset = "\x1b[0m"
-        );
+        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprint!("keyboard driver... ");
         keyboard::init_keys(0, 250, Scanset::Set1).unwrap_or_else(|_| {
-            kprintln!(
-                "{red}[ERR]{reset}",
-                red = "\x1b[31m",
-                reset = "\x1b[0m"
-            );
+            kprintln!("{red}[ERR]{reset}", red = "\x1b[31m", reset = "\x1b[0m");
         });
-        kprintln!(
-            "{green}[OK]{reset}",
-            green = "\x1b[32m",
-            reset = "\x1b[0m"
-        );
+        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         {
             kprint!("programmable interrupt controller... ");
@@ -332,10 +307,12 @@ pub fn kmain() {
 
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub extern fn panic_fmt(msg: fmt::Arguments,
-                        file: &'static str,
-                        line: u32,
-                        col: u32) -> ! {
+pub extern "C" fn panic_fmt(
+    msg: fmt::Arguments,
+    file: &'static str,
+    line: u32,
+    col: u32,
+) -> ! {
     use core::fmt::Write;
     kernel::try_vga().map(|mut vga| {
         let _ = vga.write_str("\x1b[0;31mkernel panicked at '");
@@ -348,5 +325,4 @@ pub extern fn panic_fmt(msg: fmt::Arguments,
 
 #[lang = "eh_personality"]
 #[no_mangle]
-pub extern fn eh_personality() {
-}
+pub extern "C" fn eh_personality() {}

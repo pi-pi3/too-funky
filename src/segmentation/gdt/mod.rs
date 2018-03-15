@@ -14,9 +14,7 @@ pub struct Gdtr {
 
 impl fmt::LowerHex for Gdtr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {
-            write!(f, "{:04x}{:08x}", self.limit, self.base)
-        }
+        unsafe { write!(f, "{:04x}{:08x}", self.limit, self.base) }
     }
 }
 
@@ -37,7 +35,10 @@ impl<'a> Gdt<'a> {
     }
 
     pub fn new_entry(&mut self, num: u16, entry: Entry) {
-        assert!(num & (ENTRY_SIZE as u16 - 1) == 0, "gdt entry num must be a multiple of 8");
+        assert!(
+            num & (ENTRY_SIZE as u16 - 1) == 0,
+            "gdt entry num must be a multiple of 8"
+        );
         self.inner[num as usize / ENTRY_SIZE] = entry;
     }
 }

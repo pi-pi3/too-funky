@@ -27,17 +27,12 @@ impl Entry {
 impl fmt::Debug for Entry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         unsafe {
-            write!(
-                f,
-                "Entry {} selector: {:04x}, offset: {:04x}{:04x}, zero: {:02x}, flags: {:02x} {}",
-                '{',
-                self.selector,
-                self.offset_2,
-                self.offset_1,
-                self.zero,
-                self.flags,
-                '}',
-            )
+            write!(f, "Entry {}", '{')?;
+            write!(f, "selector: {:04x}, ", self.selector)?;
+            write!(f, "offset: {:04x}{:04x}, ", self.offset_2, self.offset_1)?;
+            write!(f, "zero: {:02x}, ", self.zero)?;
+            write!(f, "flags: {:02x} ", self.flags)?;
+            write!(f, "{}", '}')
         }
     }
 }
@@ -117,7 +112,7 @@ impl EntryBuilder {
     pub fn new() -> EntryBuilder {
         EntryBuilder {
             offset: None,
-            selector: None, 
+            selector: None,
             flags: None,
         }
     }
@@ -136,9 +131,9 @@ impl EntryBuilder {
     }
 
     pub fn try_build(self) -> Option<Entry> {
-        if self.offset.is_none()
-        | self.selector.is_none()
-        | self.flags.is_none() {
+        if self.offset.is_none() | self.selector.is_none()
+            | self.flags.is_none()
+        {
             return None;
         }
         Some(self.build())
@@ -162,9 +157,7 @@ impl EntryBuilder {
     }
 
     pub fn present(mut self) -> EntryBuilder {
-        self.flags = Some(
-            self.flags.unwrap_or_default() | AttrFlags::PRESENT
-        );
+        self.flags = Some(self.flags.unwrap_or_default() | AttrFlags::PRESENT);
         self
     }
 

@@ -16,10 +16,7 @@ impl Entry {
     // the compiler thinks this method is unused, but it is actually used
     #[allow(dead_code)]
     pub(crate) const fn empty() -> Entry {
-        Entry {
-            addr: 0,
-            flags: 0,
-        }
+        Entry { addr: 0, flags: 0 }
     }
 
     pub fn into_physical(&self) -> Physical {
@@ -48,14 +45,7 @@ impl fmt::Debug for Entry {
 
 impl fmt::LowerHex for Entry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {
-            write!(
-                f,
-                "{:04x}{:04x}",
-                self.flags,
-                self.addr,
-            )
-        }
+        unsafe { write!(f, "{:04x}{:04x}", self.flags, self.addr,) }
     }
 }
 
@@ -116,8 +106,7 @@ impl EntryBuilder {
     }
 
     pub fn try_build(self) -> Option<Entry> {
-        if self.addr.is_none()
-        | self.flags.is_none() {
+        if self.addr.is_none() | self.flags.is_none() {
             return None;
         }
         Some(self.build())
@@ -135,44 +124,32 @@ impl EntryBuilder {
     }
 
     pub fn present(mut self) -> EntryBuilder {
-        self.flags = Some(
-            self.flags.unwrap_or_default() | Flags::PRESENT
-        );
+        self.flags = Some(self.flags.unwrap_or_default() | Flags::PRESENT);
         self
     }
 
     pub fn global(mut self) -> EntryBuilder {
-        self.flags = Some(
-            self.flags.unwrap_or_default() | Flags::GLOBAL
-        );
+        self.flags = Some(self.flags.unwrap_or_default() | Flags::GLOBAL);
         self
     }
 
     pub fn no_cache(mut self) -> EntryBuilder {
-        self.flags = Some(
-            self.flags.unwrap_or_default() | Flags::NOCACHE
-        );
+        self.flags = Some(self.flags.unwrap_or_default() | Flags::NOCACHE);
         self
     }
 
     pub fn write_through(mut self) -> EntryBuilder {
-        self.flags = Some(
-            self.flags.unwrap_or_default() | Flags::WTHR
-        );
+        self.flags = Some(self.flags.unwrap_or_default() | Flags::WTHR);
         self
     }
 
     pub fn user(mut self) -> EntryBuilder {
-        self.flags = Some(
-            self.flags.unwrap_or_default() | Flags::USER
-        );
+        self.flags = Some(self.flags.unwrap_or_default() | Flags::USER);
         self
     }
 
     pub fn read_write(mut self) -> EntryBuilder {
-        self.flags = Some(
-            self.flags.unwrap_or_default() | Flags::RW
-        );
+        self.flags = Some(self.flags.unwrap_or_default() | Flags::RW);
         self
     }
 

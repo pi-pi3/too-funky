@@ -19,14 +19,18 @@ macro_rules! kprint {
         $crate::macros::kputs($fmt)
     };
     ($fmt:expr, $($args:tt)*) => {
-        $crate::macros::kprintf(format_args!($fmt, $( $args )*), file!(), line!())
+        $crate::macros::kprintf(
+            format_args!($fmt, $( $args )*),
+            file!(),
+            line!()
+        )
     }
 }
 
 pub fn kprintf(args: fmt::Arguments, file: &'static str, line: u32) {
     let result = {
         let mut vga = unsafe { kernel::vga() };
-        vga.write_fmt(args) 
+        vga.write_fmt(args)
     };
 
     if let Err(err) = result {

@@ -8,7 +8,6 @@ pub enum Scancode {
     Released([u8; 8]),
 }
 
-
 impl Scancode {
     pub fn try_unwrap(self) -> Option<[u8; 8]> {
         match self {
@@ -20,7 +19,9 @@ impl Scancode {
 
     pub fn unwrap(self) -> [u8; 8] {
         match self {
-            Scancode::Invalid => panic!("attempt to call `unwrap` on `Invalid` scancode"),
+            Scancode::Invalid => {
+                panic!("attempt to call `unwrap` on `Invalid` scancode")
+            }
             Scancode::Pressed(inner) => inner,
             Scancode::Released(inner) => inner,
         }
@@ -49,7 +50,9 @@ impl Scancode {
         match byte {
             0xe0 => Scancode::poll_long(port),
             0xe1 => Scancode::poll_very_long(port),
-            byte if byte < 0x80 => Scancode::Pressed([byte, 0, 0, 0, 0, 0, 0, 0]),
+            byte if byte < 0x80 => {
+                Scancode::Pressed([byte, 0, 0, 0, 0, 0, 0, 0])
+            }
             byte => Scancode::Released([byte, 0, 0, 0, 0, 0, 0, 0]),
         }
     }
@@ -70,17 +73,18 @@ impl Scancode {
                     Scancode::Invalid
                 }
             }
-            byte if byte < 0x80 => Scancode::Pressed([0xe0, byte, 0, 0, 0, 0, 0, 0]),
+            byte if byte < 0x80 => {
+                Scancode::Pressed([0xe0, byte, 0, 0, 0, 0, 0, 0])
+            }
             byte => Scancode::Released([0xe0, byte, 0, 0, 0, 0, 0, 0]),
         }
     }
 
     unsafe fn poll_very_long(port: u16) -> Scancode {
-        if io::inb(port) == 0x1d &&
-           io::inb(port) == 0x45 &&
-           io::inb(port) == 0xe1 &&
-           io::inb(port) == 0x9d &&
-           io::inb(port) == 0xc5 {
+        if io::inb(port) == 0x1d && io::inb(port) == 0x45
+            && io::inb(port) == 0xe1 && io::inb(port) == 0x9d
+            && io::inb(port) == 0xc5
+        {
             Scancode::Pressed([0xe1, 0x1d, 0x45, 0xe1, 0x9d, 0xc5, 0, 0])
         } else {
             Scancode::Invalid

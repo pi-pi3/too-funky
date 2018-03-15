@@ -44,9 +44,7 @@ impl Pic {
     }
 
     pub fn mask(&self) -> u8 {
-        unsafe {
-            io::inb(self.dat)
-        }
+        unsafe { io::inb(self.dat) }
     }
 
     pub fn set_mask(&mut self, mask: u8) -> u8 {

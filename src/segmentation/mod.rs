@@ -1,4 +1,3 @@
-
 pub mod gdt;
 
 use self::gdt::Gdtr;

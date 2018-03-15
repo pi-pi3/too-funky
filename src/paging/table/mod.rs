@@ -13,7 +13,11 @@ struct Table<'a> {
 
 impl<'a> Table<'a> {
     pub fn new(inner: &'a mut [Entry]) -> Table<'a> {
-        assert!(inner.len() == 1024, "page directory must have 1024 entries, is {}", inner.len());
+        assert!(
+            inner.len() == 1024,
+            "page directory must have 1024 entries, is {}",
+            inner.len()
+        );
         Table { inner }
     }
 
@@ -28,7 +32,11 @@ impl<'a> Table<'a> {
         old
     }
 
-    pub fn default_map(&mut self, virt: Virtual, phys: Physical) -> Option<Entry> {
+    pub fn default_map(
+        &mut self,
+        virt: Virtual,
+        phys: Physical,
+    ) -> Option<Entry> {
         let entry = EntryBuilder::new()
             .addr(phys)
             .present()
@@ -71,7 +79,11 @@ impl<'a> ActiveTable<'a> {
         self.inner.map(virt, entry)
     }
 
-    pub fn default_map(&mut self, virt: Virtual, phys: Physical) -> Option<Entry> {
+    pub fn default_map(
+        &mut self,
+        virt: Virtual,
+        phys: Physical,
+    ) -> Option<Entry> {
         self.inner.default_map(virt, phys)
     }
 
@@ -80,7 +92,9 @@ impl<'a> ActiveTable<'a> {
     }
 
     pub fn reset_cache(&mut self) {
-        unsafe { self.inner.reset_cache(); }
+        unsafe {
+            self.inner.reset_cache();
+        }
     }
 }
 
@@ -103,7 +117,11 @@ impl<'a> InactiveTable<'a> {
         self.inner.map(virt, entry)
     }
 
-    pub fn default_map(&mut self, virt: Virtual, phys: Physical) -> Option<Entry> {
+    pub fn default_map(
+        &mut self,
+        virt: Virtual,
+        phys: Physical,
+    ) -> Option<Entry> {
         self.inner.default_map(virt, phys)
     }
 
@@ -120,18 +138,29 @@ impl<'a> InactiveTable<'a> {
         asm!("mov cr3, $0" : : "r"(phys) : : "intel", "volatile");
 
         ActiveTable {
-            inner: Table::new(slice::from_raw_parts_mut((0xffc00000 + offset) as *mut _, 1024)),
+            inner: Table::new(slice::from_raw_parts_mut(
+                (0xffc00000 + offset) as *mut _,
+                1024,
+            )),
         }
     }
 
-    // addr is the virtual address to which the current active table will be mapped
+    // addr is the virtual address to which the current active table will be
+    // mapped
     #[must_use]
-    pub fn switch<'b>(mut self, active: ActiveTable<'b>, addr: Virtual) -> (ActiveTable<'a>, InactiveTable<'b>) {
-        let old_phys = Physical::new(active.inner[0x3ff].into_physical().into_inner());
+    pub fn switch<'b>(
+        mut self,
+        active: ActiveTable<'b>,
+        addr: Virtual,
+    ) -> (ActiveTable<'a>, InactiveTable<'b>) {
+        let old_phys =
+            Physical::new(active.inner[0x3ff].into_physical().into_inner());
         let old_offset = old_phys.into_inner() & (PAGE_SIZE - 1);
 
-        let idx = self.inner.as_ptr() as usize >> 22; // self virtual idx
-        let new_phys = active.inner[idx].into_physical(); // self physical address
+        // self virtual idx
+        let idx = self.inner.as_ptr() as usize >> 22;
+        // self physical address
+        let new_phys = active.inner[idx].into_physical();
         let new_offset = new_phys.into_inner() & (PAGE_SIZE - 1);
         self.default_map(Virtual::new(0xffc00000), new_phys & !(PAGE_SIZE - 1));
         self.default_map(addr, old_phys & !(PAGE_SIZE - 1));
@@ -140,12 +169,18 @@ impl<'a> InactiveTable<'a> {
             asm!("mov cr3, $0" : : "r"(new_phys) : : "intel", "volatile");
 
             ActiveTable {
-                inner: Table::new(slice::from_raw_parts_mut((0xffc00000 + new_offset) as *mut _, 1024)),
+                inner: Table::new(slice::from_raw_parts_mut(
+                    (0xffc00000 + new_offset) as *mut _,
+                    1024,
+                )),
             }
         };
         let new_inactive = unsafe {
             InactiveTable {
-                inner: Table::new(slice::from_raw_parts_mut((addr.into_inner() + old_offset) as *mut _, 1024)),
+                inner: Table::new(slice::from_raw_parts_mut(
+                    (addr.into_inner() + old_offset) as *mut _,
+                    1024,
+                )),
             }
         };
         (new_active, new_inactive)

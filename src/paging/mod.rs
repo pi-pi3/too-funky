@@ -25,8 +25,6 @@ impl Iterator for Pages {
     type Item = Physical;
 
     fn next(&mut self) -> Option<Physical> {
-        self.inner
-            .next()
-            .map(|page| Physical::new(page << 22))
+        self.inner.next().map(|page| Physical::new(page << 22))
     }
 }

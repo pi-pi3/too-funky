@@ -1,4 +1,3 @@
-
 interrupt_handlers! {
     pub unsafe extern fn de<()>(;) {
         panic!("divide-by-zero error"); // 0x0

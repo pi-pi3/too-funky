@@ -1,4 +1,3 @@
-
 #[derive(Clone, Default)]
 pub struct Args {
     pub eax: usize,
@@ -23,8 +22,14 @@ pub struct ErrArgs<E> {
 pub enum NoCall {}
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! inner_func {
-    ($func:ident, $( $errarg:ident : $errreg:ident ),* ; $( $arg:ident : $reg:ident, )* $body:block) => {
+    (
+        $func:ident,
+        $( $errarg:ident : $errreg:ident ),* ;
+        $( $arg:ident : $reg:ident, )*
+        $body:block
+    ) => {
         unsafe fn $func ( $( $errarg : usize ),* ) {
             let mut regs = $crate::interrupt::macros::Args::default();
             regs!(regs);
@@ -39,9 +44,10 @@ macro_rules! inner_func {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! regs {
     ($regs:expr) => {
-        asm!("": 
+        asm!("":
                  "={eax}"($regs.eax),
                  "={edx}"($regs.edx),
                  "={ecx}"($regs.ecx),
@@ -54,16 +60,19 @@ macro_rules! regs {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! pushad {
     () => { asm!( "pushad" : : : : "intel", "volatile") }
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! popad {
     () => { asm!( "popad" : : : : "intel", "volatile") }
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! iretd {
     () => { asm!( "iretd" : : : : "intel", "volatile") }
 }
@@ -71,7 +80,8 @@ macro_rules! iretd {
 #[macro_export]
 macro_rules! interrupt_handler {
     {
-        pub unsafe extern fn $func:ident ( $( $arg:ident : $reg:ident ),* ) $body:block
+        pub unsafe extern fn $func:ident ( $( $arg:ident : $reg:ident ),* )
+            $body:block
     } => {
         #[naked]
         pub unsafe extern fn $func ( _: $crate::interrupt::macros::NoCall ) {
@@ -88,13 +98,24 @@ macro_rules! interrupt_handler {
 #[macro_export]
 macro_rules! exception_handler {
     {
-        pub unsafe extern fn $func:ident < $err:ty > ( $( $errarg:ident : $errreg:ident ),* ; $( $arg:ident : $reg:ident ),* ) $body:block
+        pub unsafe extern fn $func:ident < $err:ty > (
+            $( $errarg:ident : $errreg:ident ),* ;
+            $( $arg:ident : $reg:ident ),*
+        ) $body:block
     } => {
         #[naked]
         #[allow(unused_variables)]
-        pub unsafe extern fn $func ( args: $crate::interrupt::macros::ErrArgs<$err>, _: $crate::interrupt::macros::NoCall ) {
+        pub unsafe extern fn $func (
+            args: $crate::interrupt::macros::ErrArgs<$err>,
+            _: $crate::interrupt::macros::NoCall
+        ) {
             pushad!();
-            inner_func!(inner, $( $errarg : $errreg ),* ; $( $arg : $reg, )* $body);
+            inner_func!(
+                inner,
+                $( $errarg : $errreg ),* ;
+                $( $arg : $reg, )*
+                $body
+            );
             inner($( args.$errarg ),*);
             popad!();
             iretd!();
@@ -107,7 +128,8 @@ macro_rules! exception_handler {
 macro_rules! interrupt_handlers {
     {} => {};
     {
-        pub unsafe extern fn $func:ident ( $( $arg:ident : $reg:ident ),* ) $body:block
+        pub unsafe extern fn $func:ident ( $( $arg:ident : $reg:ident ),* )
+            $body:block
         $( $rest:tt )*
     } => {
         interrupt_handler! {
@@ -116,11 +138,17 @@ macro_rules! interrupt_handlers {
         interrupt_handlers! { $( $rest )* }
     };
     {
-        pub unsafe extern fn $func:ident < $err:ty > ( $( $errarg:ident : $errreg:ident ),* ; $( $arg:ident : $reg:ident ),* ) $body:block
+        pub unsafe extern fn $func:ident < $err:ty > (
+            $( $errarg:ident : $errreg:ident ),* ;
+            $( $arg:ident : $reg:ident ),*
+        ) $body:block
         $( $rest:tt )*
     } => {
         exception_handler! {
-            pub unsafe extern fn $func < $err > ( $( $errarg : $errreg ),* ; $( $arg : $reg ),* ) $body
+            pub unsafe extern fn $func < $err > (
+                $( $errarg : $errreg ),* ;
+                $( $arg : $reg ),*
+            ) $body
         }
         interrupt_handlers! { $( $rest )* }
     }

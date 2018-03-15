@@ -128,7 +128,7 @@ impl EntryBuilder {
     pub fn new() -> EntryBuilder {
         EntryBuilder {
             base: None,
-            limit: None, 
+            limit: None,
             flags: None,
             access: None,
         }
@@ -150,10 +150,9 @@ impl EntryBuilder {
     }
 
     pub fn try_build(self) -> Option<Entry> {
-        if self.base.is_none()
-        | self.limit.is_none()
-        | self.flags.is_none()
-        | self.access.is_none() {
+        if self.base.is_none() | self.limit.is_none() | self.flags.is_none()
+            | self.access.is_none()
+        {
             return None;
         }
         Some(self.build())
@@ -178,30 +177,28 @@ impl EntryBuilder {
     }
 
     pub fn granularity(mut self, granularity: Granularity) -> EntryBuilder {
-        self.flags = Some(
-            match granularity {
-                Granularity::Page => self.flags.unwrap_or_default() | Flags::PAGE_GR,
-                Granularity::Bit => self.flags.unwrap_or_default() & !Flags::PAGE_GR,
+        self.flags = Some(match granularity {
+            Granularity::Page => {
+                self.flags.unwrap_or_default() | Flags::PAGE_GR
             }
-        );
+            Granularity::Bit => {
+                self.flags.unwrap_or_default() & !Flags::PAGE_GR
+            }
+        });
         self
     }
 
     pub fn size(mut self, size: u8) -> EntryBuilder {
-        self.flags = Some(
-            match size {
-                16 => self.flags.unwrap_or_default() & !Flags::SIZE_32,
-                32 => self.flags.unwrap_or_default() | Flags::SIZE_32,
-                _ => panic!("gdt::Entry size must be 16 or 32"),
-            }
-        );
+        self.flags = Some(match size {
+            16 => self.flags.unwrap_or_default() & !Flags::SIZE_32,
+            32 => self.flags.unwrap_or_default() | Flags::SIZE_32,
+            _ => panic!("gdt::Entry size must be 16 or 32"),
+        });
         self
     }
 
     pub fn present(mut self) -> EntryBuilder {
-        self.access = Some(
-            self.access.unwrap_or_default() | Access::PRESENT
-        );
+        self.access = Some(self.access.unwrap_or_default() | Access::PRESENT);
         self
     }
 
@@ -215,16 +212,12 @@ impl EntryBuilder {
     }
 
     pub fn executable(mut self) -> EntryBuilder {
-        self.access = Some(
-            self.access.unwrap_or_default() | Access::EXEC
-        );
+        self.access = Some(self.access.unwrap_or_default() | Access::EXEC);
         self
     }
 
     pub fn read_write(mut self) -> EntryBuilder {
-        self.access = Some(
-            self.access.unwrap_or_default() | Access::RW
-        );
+        self.access = Some(self.access.unwrap_or_default() | Access::RW);
         self
     }
 }

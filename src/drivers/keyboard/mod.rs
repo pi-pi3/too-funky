@@ -30,7 +30,11 @@ interrupt_handlers! {
     }
 }
 
-pub unsafe fn init_keys(delay: u8, repeat: u16, scanset: Scanset) -> Result<(), ()> {
+pub unsafe fn init_keys(
+    delay: u8,
+    repeat: u16,
+    scanset: Scanset,
+) -> Result<(), ()> {
     let keyboard = Keyboard::new(delay, repeat, &mut KEYS, &mut INPUT, scanset)
         .map(|keyboard| Mutex::new(keyboard));
     if keyboard.is_some() {
@@ -43,16 +47,18 @@ pub unsafe fn init_keys(delay: u8, repeat: u16, scanset: Scanset) -> Result<(), 
 
 pub fn poll() -> Keycode {
     loop {
-        unsafe { irq::disable(); }
+        unsafe {
+            irq::disable();
+        }
 
         let result = {
-            let mut key = unsafe { KEYBOARD.as_ref() }
-                .unwrap()
-                .lock();
+            let mut key = unsafe { KEYBOARD.as_ref() }.unwrap().lock();
             key.last()
         };
 
-        unsafe { irq::enable(); }
+        unsafe {
+            irq::enable();
+        }
 
         if result.is_some() {
             break result.unwrap();
@@ -61,31 +67,35 @@ pub fn poll() -> Keycode {
 }
 
 pub fn modifiers() -> Mod {
-    unsafe { irq::disable(); }
+    unsafe {
+        irq::disable();
+    }
 
     let result = {
-        let key = unsafe { KEYBOARD.as_ref() }
-            .unwrap()
-            .lock();
+        let key = unsafe { KEYBOARD.as_ref() }.unwrap().lock();
         key.modifiers()
     };
 
-    unsafe { irq::enable(); }
+    unsafe {
+        irq::enable();
+    }
 
     result
 }
 
 pub fn is_pressed(keycode: Keycode) -> bool {
-    unsafe { irq::disable(); }
+    unsafe {
+        irq::disable();
+    }
 
     let result = {
-        let key = unsafe { KEYBOARD.as_ref() }
-            .unwrap()
-            .lock();
+        let key = unsafe { KEYBOARD.as_ref() }.unwrap().lock();
         key.is_pressed(keycode)
     };
 
-    unsafe { irq::enable(); }
+    unsafe {
+        irq::enable();
+    }
 
     result
 }

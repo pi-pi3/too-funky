@@ -14,9 +14,7 @@ pub struct Idtr {
 
 impl fmt::LowerHex for Idtr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {
-            write!(f, "{:04x}{:08x}", self.limit, self.base)
-        }
+        unsafe { write!(f, "{:04x}{:08x}", self.limit, self.base) }
     }
 }
 
@@ -51,7 +49,11 @@ impl<'a> Idt<'a> {
         self.new_handler(num, entry);
     }
 
-    pub fn new_exception_handler<E>(&mut self, num: u8, isr: ExceptionHandler<E>) {
+    pub fn new_exception_handler<E>(
+        &mut self,
+        num: u8,
+        isr: ExceptionHandler<E>,
+    ) {
         self.new_default_handler(num, isr as *const ());
     }
 

@@ -171,14 +171,20 @@ impl Vga {
 
         let vga = VGA_BUFFER as *mut _;
         let color = (Shade::default_bg(), Shade::default_fg());
-        let mut vga = Vga { vga, color, y: 0, x: 0, state: State::Default };
+        let mut vga = Vga {
+            vga,
+            color,
+            y: 0,
+            x: 0,
+            state: State::Default,
+        };
         vga.cls();
         vga
     }
 
     pub fn cls(&mut self) {
         let ch = Char::default().into();
-        for i in 0 .. WIDTH * HEIGHT {
+        for i in 0..WIDTH * HEIGHT {
             unsafe {
                 self.write_raw(ch, i);
             }
@@ -231,14 +237,30 @@ impl Vga {
     fn set_attr(&mut self, attr0: i16, attr1: i16) -> Result<(), ()> {
         match (attr0, attr1) {
             (0, 0) => self.color = (Shade::default_bg(), Shade::default_fg()),
-            (1, c) if c >= 30 && c <= 37 => self.color.1 = Shade::from_attr(8 | (c as u8 - 30)),
-            (c, 1) if c >= 30 && c <= 37 => self.color.1 = Shade::from_attr(8 | (c as u8 - 30)),
-            (0, c) if c >= 30 && c <= 37 => self.color.1 = Shade::from_attr(c as u8 - 30),
-            (c, 0) if c >= 30 && c <= 37 => self.color.1 = Shade::from_attr(c as u8 - 30),
-            (1, c) if c >= 40 && c <= 47 => self.color.0 = Shade::from_attr(8 | (c as u8 - 30)),
-            (c, 1) if c >= 40 && c <= 47 => self.color.0 = Shade::from_attr(8 | (c as u8 - 30)),
-            (0, c) if c >= 40 && c <= 47 => self.color.0 = Shade::from_attr(c as u8 - 30),
-            (c, 0) if c >= 40 && c <= 47 => self.color.0 = Shade::from_attr(c as u8 - 30),
+            (1, c) if c >= 30 && c <= 37 => {
+                self.color.1 = Shade::from_attr(8 | (c as u8 - 30))
+            }
+            (c, 1) if c >= 30 && c <= 37 => {
+                self.color.1 = Shade::from_attr(8 | (c as u8 - 30))
+            }
+            (0, c) if c >= 30 && c <= 37 => {
+                self.color.1 = Shade::from_attr(c as u8 - 30)
+            }
+            (c, 0) if c >= 30 && c <= 37 => {
+                self.color.1 = Shade::from_attr(c as u8 - 30)
+            }
+            (1, c) if c >= 40 && c <= 47 => {
+                self.color.0 = Shade::from_attr(8 | (c as u8 - 30))
+            }
+            (c, 1) if c >= 40 && c <= 47 => {
+                self.color.0 = Shade::from_attr(8 | (c as u8 - 30))
+            }
+            (0, c) if c >= 40 && c <= 47 => {
+                self.color.0 = Shade::from_attr(c as u8 - 30)
+            }
+            (c, 0) if c >= 40 && c <= 47 => {
+                self.color.0 = Shade::from_attr(c as u8 - 30)
+            }
             _ => return Err(()),
         }
         Ok(())
@@ -249,10 +271,10 @@ impl Vga {
         *self.vga.add(offset) = ch;
     }
 
-//   - ^[[<COUNT>A, ^[<COUNT>B, ^[<COUNT>C, ^[<COUNT>D
-//   - ^[[<ROW>;<COLUMN>H
-//   - ^[7, ^[8
-//   - ^[[<ATTR>m, ^[[<ATTR1>;<ATTR2>m
+    //   - ^[[<COUNT>A, ^[<COUNT>B, ^[<COUNT>C, ^[<COUNT>D
+    //   - ^[[<ROW>;<COLUMN>H
+    //   - ^[7, ^[8
+    //   - ^[[<ATTR>m, ^[[<ATTR1>;<ATTR2>m
     fn write_byte(&mut self, byte: u8) {
         match self.state {
             State::Esc => match byte {
@@ -264,7 +286,7 @@ impl Vga {
                     self.write_byte(b'[');
                     self.write_byte(byte);
                 }
-            }
+            },
             State::Bracket => match byte {
                 b'A' => {
                     self.state = State::Default;
@@ -295,7 +317,7 @@ impl Vga {
                     self.write_byte(b'[');
                     self.write_byte(byte);
                 }
-            }
+            },
             State::Count(i) => match byte {
                 b'A' => {
                     self.state = State::Default;
@@ -324,7 +346,7 @@ impl Vga {
                 byte => {
                     let _ = write!(self, "^[[{}{}", i, byte as char);
                 }
-            }
+            },
             State::Tuple(i0, i1) => match byte {
                 b'H' => {
                     self.state = State::Default;
@@ -335,15 +357,16 @@ impl Vga {
                     let _ = self.set_attr(i0, i1);
                 }
                 x if x >= b'0' && x <= b'9' => {
-                    self.state = State::Tuple(i0, i1 * 10 + x as i16 - b'0' as i16)
+                    self.state =
+                        State::Tuple(i0, i1 * 10 + x as i16 - b'0' as i16)
                 }
                 byte => {
                     let _ = write!(self, "^[[{};{}{}", i0, i1, byte as char);
                 }
-            }
+            },
             State::Default => match byte {
-                b'\0' => {},
-                0x08  => self.back(),
+                b'\0' => {}
+                0x08 => self.back(),
                 b'\t' => {
                     // tabs are just four spaces, god dammit
                     let n = 4 - (self.x & 3);
@@ -353,7 +376,7 @@ impl Vga {
                 }
                 b'\n' => self.endl(),
                 b'\r' => self.cr(),
-                0x1b  => self.state = State::Esc,
+                0x1b => self.state = State::Esc,
                 byte if byte < 0x20 => {
                     self.write_byte(b'^');
                     self.write_byte(byte + b'A');
@@ -366,7 +389,7 @@ impl Vga {
                     }
                     self.next();
                 }
-            }
+            },
         }
     }
 

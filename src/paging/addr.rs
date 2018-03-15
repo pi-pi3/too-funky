@@ -1,5 +1,5 @@
 use core::fmt::{self, LowerHex};
-use core::ops::{Add, Shl, Shr, BitAnd};
+use core::ops::{Add, BitAnd, Shl, Shr};
 use core::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

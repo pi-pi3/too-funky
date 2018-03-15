@@ -159,7 +159,10 @@ impl Keycode {
         Keycode::from_scancode_with_scanset(code, Scanset::default())
     }
 
-    pub fn from_scancode_with_scanset(scancode: [u8; 8], _set: Scanset) -> Keycode {
+    pub fn from_scancode_with_scanset(
+        scancode: [u8; 8],
+        _set: Scanset,
+    ) -> Keycode {
         match scancode[0] {
             0xe0 => unimplemented!(),
             0xe1 => unimplemented!(),
@@ -174,9 +177,7 @@ impl Keycode {
         // because it doesn't really matter what this returns,
         // as long as its unique
         use core::intrinsics;
-        unsafe {
-            intrinsics::discriminant_value(self) as u8
-        }
+        unsafe { intrinsics::discriminant_value(self) as u8 }
     }
 
     pub fn into_char(self) -> Option<u8> {
@@ -197,96 +198,95 @@ impl Display for Keycode {
 
 // us qwerty
 static SCANSET_1: [Keycode; 0x80] = [
-    Keycode::Unknown, // 0x00
-    Keycode::Escape, // 0x01
-    Keycode::One, // 0x02
-    Keycode::Two, // 0x03
-    Keycode::Three, // 0x04
-    Keycode::Four, // 0x05
-    Keycode::Five, // 0x06
-    Keycode::Six, // 0x07
-    Keycode::Seven, // 0x08
-    Keycode::Eight, // 0x09
-    Keycode::Nine, // 0x0A
-    Keycode::Zero, // 0x0B
-    Keycode::Minus, // 0x0C
-    Keycode::Equal, // 0x0D
-    Keycode::Backspace, // 0x0E
-    Keycode::Tab, // 0x0F
-    Keycode::Q, // 0x10
-    Keycode::W, // 0x11
-    Keycode::E, // 0x12
-    Keycode::R, // 0x13
-    Keycode::T, // 0x14
-    Keycode::Y, // 0x15
-    Keycode::U, // 0x16
-    Keycode::I, // 0x17
-    Keycode::O, // 0x18
-    Keycode::P, // 0x19
-    Keycode::BracketLeft, // 0x1A
+    Keycode::Unknown,      // 0x00
+    Keycode::Escape,       // 0x01
+    Keycode::One,          // 0x02
+    Keycode::Two,          // 0x03
+    Keycode::Three,        // 0x04
+    Keycode::Four,         // 0x05
+    Keycode::Five,         // 0x06
+    Keycode::Six,          // 0x07
+    Keycode::Seven,        // 0x08
+    Keycode::Eight,        // 0x09
+    Keycode::Nine,         // 0x0A
+    Keycode::Zero,         // 0x0B
+    Keycode::Minus,        // 0x0C
+    Keycode::Equal,        // 0x0D
+    Keycode::Backspace,    // 0x0E
+    Keycode::Tab,          // 0x0F
+    Keycode::Q,            // 0x10
+    Keycode::W,            // 0x11
+    Keycode::E,            // 0x12
+    Keycode::R,            // 0x13
+    Keycode::T,            // 0x14
+    Keycode::Y,            // 0x15
+    Keycode::U,            // 0x16
+    Keycode::I,            // 0x17
+    Keycode::O,            // 0x18
+    Keycode::P,            // 0x19
+    Keycode::BracketLeft,  // 0x1A
     Keycode::BracketRight, // 0x1B
-    Keycode::Enter, // 0x1C
-    Keycode::ControlLeft, // 0x1D
-    Keycode::A, // 0x1E
-    Keycode::S, // 0x1F
-    Keycode::D, // 0x20
-    Keycode::F, // 0x21
-    Keycode::G, // 0x22
-    Keycode::H, // 0x23
-    Keycode::J, // 0x24
-    Keycode::K, // 0x25
-    Keycode::L, // 0x26
-    Keycode::Semicolon, // 0x27
-    Keycode::SingleQuote, // 0x28
-    Keycode::Backtick, // 0x29
-    Keycode::ShiftLeft, // 0x2A
-    Keycode::Backslash, // 0x2B
-    Keycode::Z, // 0x2C
-    Keycode::X, // 0x2D
-    Keycode::C, // 0x2E
-    Keycode::V, // 0x2F
-    Keycode::B, // 0x30
-    Keycode::N, // 0x31
-    Keycode::M, // 0x32
-    Keycode::Comma, // 0x33
-    Keycode::Period, // 0x34
-    Keycode::Slash, // 0x35
-    Keycode::ShiftRight, // 0x36
-    Keycode::NumAsterisk, // 0x37
-    Keycode::AltLeft, // 0x38
-    Keycode::Space, // 0x39
-    Keycode::CapsLock, // 0x3A
-    Keycode::F1, // 0x3B
-    Keycode::F2, // 0x3C
-    Keycode::F3, // 0x3D
-    Keycode::F4, // 0x3E
-    Keycode::F5, // 0x3F
-    Keycode::F6, // 0x40
-    Keycode::F7, // 0x41
-    Keycode::F8, // 0x42
-    Keycode::F9, // 0x43
-    Keycode::F10, // 0x44
-    Keycode::NumLock, // 0x45
-    Keycode::ScrollLock, // 0x46
-    Keycode::NumSeven, // 0x47
-    Keycode::NumEight, // 0x48
-    Keycode::NumNine, // 0x49
-    Keycode::NumMinus, // 0x4A
-    Keycode::NumFour, // 0x4B
-    Keycode::NumFive, // 0x4C
-    Keycode::NumSix, // 0x4D
-    Keycode::NumPlus, // 0x4E
-    Keycode::NumOne, // 0x4F
-    Keycode::NumTwo, // 0x50
-    Keycode::NumThree, // 0x51
-    Keycode::NumZero, // 0x52
-    Keycode::NumPeriod, // 0x53
-    Keycode::Unknown, // 0x54
-    Keycode::Unknown, // 0x55
-    Keycode::Unknown, // 0x56
-    Keycode::F11, // 0x57
-    Keycode::F12, // 0x58
-
+    Keycode::Enter,        // 0x1C
+    Keycode::ControlLeft,  // 0x1D
+    Keycode::A,            // 0x1E
+    Keycode::S,            // 0x1F
+    Keycode::D,            // 0x20
+    Keycode::F,            // 0x21
+    Keycode::G,            // 0x22
+    Keycode::H,            // 0x23
+    Keycode::J,            // 0x24
+    Keycode::K,            // 0x25
+    Keycode::L,            // 0x26
+    Keycode::Semicolon,    // 0x27
+    Keycode::SingleQuote,  // 0x28
+    Keycode::Backtick,     // 0x29
+    Keycode::ShiftLeft,    // 0x2A
+    Keycode::Backslash,    // 0x2B
+    Keycode::Z,            // 0x2C
+    Keycode::X,            // 0x2D
+    Keycode::C,            // 0x2E
+    Keycode::V,            // 0x2F
+    Keycode::B,            // 0x30
+    Keycode::N,            // 0x31
+    Keycode::M,            // 0x32
+    Keycode::Comma,        // 0x33
+    Keycode::Period,       // 0x34
+    Keycode::Slash,        // 0x35
+    Keycode::ShiftRight,   // 0x36
+    Keycode::NumAsterisk,  // 0x37
+    Keycode::AltLeft,      // 0x38
+    Keycode::Space,        // 0x39
+    Keycode::CapsLock,     // 0x3A
+    Keycode::F1,           // 0x3B
+    Keycode::F2,           // 0x3C
+    Keycode::F3,           // 0x3D
+    Keycode::F4,           // 0x3E
+    Keycode::F5,           // 0x3F
+    Keycode::F6,           // 0x40
+    Keycode::F7,           // 0x41
+    Keycode::F8,           // 0x42
+    Keycode::F9,           // 0x43
+    Keycode::F10,          // 0x44
+    Keycode::NumLock,      // 0x45
+    Keycode::ScrollLock,   // 0x46
+    Keycode::NumSeven,     // 0x47
+    Keycode::NumEight,     // 0x48
+    Keycode::NumNine,      // 0x49
+    Keycode::NumMinus,     // 0x4A
+    Keycode::NumFour,      // 0x4B
+    Keycode::NumFive,      // 0x4C
+    Keycode::NumSix,       // 0x4D
+    Keycode::NumPlus,      // 0x4E
+    Keycode::NumOne,       // 0x4F
+    Keycode::NumTwo,       // 0x50
+    Keycode::NumThree,     // 0x51
+    Keycode::NumZero,      // 0x52
+    Keycode::NumPeriod,    // 0x53
+    Keycode::Unknown,      // 0x54
+    Keycode::Unknown,      // 0x55
+    Keycode::Unknown,      // 0x56
+    Keycode::F11,          // 0x57
+    Keycode::F12,          // 0x58
     // filler
     Keycode::Unknown,
     Keycode::Unknown,
@@ -330,144 +330,15 @@ static SCANSET_1: [Keycode; 0x80] = [
 ];
 
 static CHARS: [u8; 0x80] = [
-    b'0',
-    b'1',
-    b'2',
-    b'3',
-    b'4',
-    b'5',
-    b'6',
-    b'7',
-    b'8',
-    b'9',
-
-    b'a',
-    b'b',
-    b'c',
-    b'd',
-    b'e',
-    b'f',
-    b'g',
-    b'h',
-    b'i',
-    b'j',
-    b'k',
-    b'l',
-    b'm',
-    b'n',
-    b'o',
-    b'p',
-    b'q',
-    b'r',
-    b's',
-    b't',
-    b'u',
-    b'v',
-    b'w',
-    b'x',
-    b'y',
-    b'z',
-
-    b'+',
-    b'-',
-    b'*',
-    b'=',
-
-    b'\\',
-    b'/',
-    b'[',
-    b']',
-    b';',
-    b':',
-    b'\'',
-    b'"',
-    b'`',
-    b',',
-    b'.',
-
-    b'\n',
-    b' ',
-    b'\t',
-    0x08,
-
-    b'+',
-    b'-',
-    b'*',
-    b'/',
-    b',',
-    b'.',
-
-    b'0',
-    b'1',
-    b'2',
-    b'3',
-    b'4',
-    b'5',
-    b'6',
-    b'7',
-    b'8',
-    b'9',
-
-    0xff,
-    0xff,
-    0xff,
-
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-
-    0xff,
-
-    // filler bytes
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
-    0xff,
+    b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'a', b'b',
+    b'c', b'd', b'e', b'f', b'g', b'h', b'i', b'j', b'k', b'l', b'm', b'n',
+    b'o', b'p', b'q', b'r', b's', b't', b'u', b'v', b'w', b'x', b'y', b'z',
+    b'+', b'-', b'*', b'=', b'\\', b'/', b'[', b']', b';', b':', b'\'', b'"',
+    b'`', b',', b'.', b'\n', b' ', b'\t', 0x08, b'+', b'-', b'*', b'/', b',',
+    b'.', b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, /* filler bytes */ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 ];
