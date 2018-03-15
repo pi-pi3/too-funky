@@ -51,6 +51,11 @@ impl<'a> Table<'a> {
         self.map(virt, Entry::empty())
     }
 
+    pub fn is_used(&self, virt: Virtual) -> bool {
+        let idx = virt.into_inner() >> 22;
+        self.inner[idx].is_used()
+    }
+
     pub unsafe fn reset_cache(&mut self) {
         asm!("mov eax, cr3; mov cr3, eax" : : : "eax" : "intel", "volatile");
     }
@@ -91,6 +96,10 @@ impl<'a> ActiveTable<'a> {
         self.inner.unmap(virt)
     }
 
+    pub fn is_used(&self, virt: Virtual) -> bool {
+        self.inner.is_used(virt)
+    }
+
     pub fn reset_cache(&mut self) {
         unsafe {
             self.inner.reset_cache();
@@ -127,6 +136,10 @@ impl<'a> InactiveTable<'a> {
 
     pub fn unmap(&mut self, virt: Virtual) -> Option<Entry> {
         self.inner.unmap(virt)
+    }
+
+    pub fn is_used(&self, virt: Virtual) -> bool {
+        self.inner.is_used(virt)
     }
 
     #[must_use]
