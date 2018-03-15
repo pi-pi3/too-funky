@@ -23,6 +23,7 @@ pub mod macros;
 pub mod interrupt;
 pub mod paging;
 pub mod segmentation;
+pub mod mem;
 pub mod drivers;
 pub mod syscall;
 
