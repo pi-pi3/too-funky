@@ -69,12 +69,18 @@ impl Allocator {
     }
 
     pub fn allocate(&mut self) -> Option<Frame> {
-        for idx in 0 .. LEN {
+        self.allocate_at(Virtual::new(0))
+    }
+
+    pub fn allocate_at(&mut self, virt: Virtual) -> Option<Frame> {
+        let idx = virt.into_inner() >> 22;
+        for idx in idx .. LEN {
             if self.bitmap[idx] != 0 {
                 let word = self.bitmap[idx];
                 for bit in 0 .. USIZE_BITS {
                     let bit = 1 << bit;
                     if word & bit == 0 {
+                        self.bitmap |= bit;
                         let addr = idx << 27 | bit << 22;
                         let frame = Frame {
                             addr: Virtual::new(addr),
