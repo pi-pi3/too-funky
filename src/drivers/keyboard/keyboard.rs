@@ -267,13 +267,6 @@ impl<'a> Keyboard<'a> {
         }
     }
 
-    pub fn empty_input(&mut self, buffer: &mut [Keycode]) -> usize {
-        buffer.copy_from_slice(self.input);
-        let size = self.input_size;
-        self.input_size = 0;
-        size
-    }
-
     pub fn last(&mut self) -> Option<Keycode> {
         let input_size = self.input_size;
         if input_size > 0 {

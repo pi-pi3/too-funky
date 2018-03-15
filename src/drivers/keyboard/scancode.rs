@@ -18,13 +18,8 @@ impl Scancode {
     }
 
     pub fn unwrap(self) -> [u8; 8] {
-        match self {
-            Scancode::Invalid => {
-                panic!("attempt to call `unwrap` on `Invalid` scancode")
-            }
-            Scancode::Pressed(inner) => inner,
-            Scancode::Released(inner) => inner,
-        }
+        self.try_unwrap()
+            .expect("attempt to call `unwrap` on `Invalid` scancode")
     }
 
     pub fn is_valid(&self) -> bool {
