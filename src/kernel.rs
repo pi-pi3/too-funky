@@ -255,6 +255,14 @@ pub fn kmain() {
 
     unsafe {
         kernel::init_vga();
+
+        kprint!("paging... ");
+        kprintln!(
+            "{green}[OK]{reset}",
+            green = "\x1b[32m",
+            reset = "\x1b[0m"
+        );
+
         kprint!("vga... ");
         kprintln!(
             "{green}[OK]{reset}",
@@ -278,7 +286,19 @@ pub fn kmain() {
             reset = "\x1b[0m"
         );
 
-        keyboard::init_keys(0, 250, Scanset::Set1).unwrap();
+        kprint!("keyboard driver... ");
+        keyboard::init_keys(0, 250, Scanset::Set1).unwrap_or_else(|_| {
+            kprintln!(
+                "{red}[ERR]{reset}",
+                red = "\x1b[31m",
+                reset = "\x1b[0m"
+            );
+        });
+        kprintln!(
+            "{green}[OK]{reset}",
+            green = "\x1b[32m",
+            reset = "\x1b[0m"
+        );
 
         {
             kprint!("pic... ");
@@ -296,6 +316,8 @@ pub fn kmain() {
             pic.0.clear_mask(1);
         }
 
+        kprintln!("enabling hardware interrupts...");
+        kprintln!("you're on your own now...");
         irq::enable();
     }
 
