@@ -20,6 +20,7 @@ use core::fmt;
 pub mod macros;
 #[macro_use]
 pub mod interrupt;
+pub mod paging;
 pub mod segmentation;
 pub mod drivers;
 pub mod syscall;
@@ -201,7 +202,7 @@ pub extern "C" fn kmain() -> ! {
             reset = "\x1b[0m"
         );
 
-        keyboard::init_keys(0, 250, Scanset::Set1);
+        keyboard::init_keys(0, 250, Scanset::Set1).unwrap();
 
         {
             kprint!("pic... ");
