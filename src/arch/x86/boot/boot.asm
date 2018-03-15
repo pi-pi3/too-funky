@@ -1,11 +1,7 @@
 bits 32
 
-;; paging.asm
-extern setup_paging
-extern unmap_id
-
 ;; lib.rs
-extern kmain
+extern _rust_start
 
 extern kernel_end
 extern kernel_start
@@ -15,26 +11,12 @@ global _start:function (_start.end - _start)
 global _start.higher_half
 _start:
         cli
-        ;; this maps the first virtual 4MiB to physical first 4MiB
-        ;; and maps the last pde to the pde itself
-        jmp     setup_paging
-
-.higher_half:
         ;; setup a 16kiB stack
-        mov     esp, stack_end
+        lea     esp, [stack_end - 0xe0000000]
 
         mov     ebp, 0
         push    ebp
 
-        push    ebx ; mbi addr
-        push    eax ; mb2 magic
-
-        call    unmap_id
-
-        sti
-
-        pop     eax
-        pop     ebx
         add     ebx, 0xe0000000 ; higher half offset
 
         push    kernel_end
@@ -42,14 +24,7 @@ _start:
         push    ebx ; mbi addr
         push    eax ; mb2 magic
 
-        call    kmain
-        add     esp, 16
-
-        cli
-.hang:  hlt
-        jmp     .hang
-
-        pop     ebp
+        call    _rust_start
 .end:
 
 section .bss
@@ -57,3 +32,7 @@ align 16, resb 0
 stack_bottom:
             resb    16384
 stack_end:
+
+global KERNEL_MAP_INNER
+align 4096, resb 0
+KERNEL_MAP_INNER    resd    1024

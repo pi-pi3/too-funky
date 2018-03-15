@@ -5,6 +5,7 @@
 #![feature(asm)]
 #![feature(naked_functions)]
 #![feature(core_intrinsics)]
+#![feature(fn_must_use)]
 #![no_std]
 
 extern crate rlibc;
@@ -31,6 +32,8 @@ use drivers::keyboard::{self, Scanset, Keycode};
 pub mod kernel {
     use spin::{Mutex, MutexGuard};
 
+    use paging::addr::*;
+    use paging::table::InactiveTable;
     use drivers::vga::Vga;
     use drivers::pic::{Pic, Mode as PicMode};
     use drivers::keyboard;
@@ -38,6 +41,8 @@ pub mod kernel {
     use segmentation::gdt::{self, Gdt, Gdtr};
     use interrupt::{lidt, exceptions};
     use interrupt::idt::{self, Idt, Idtr};
+
+    const KERNEL_BASE: usize = 0xe0000000;
 
     static mut VGA: Option<Mutex<Vga>> = None;
 
@@ -50,6 +55,71 @@ pub mod kernel {
     static mut IDT: Idt = unsafe { Idt { inner: &mut IDT_INNER } }; // IDT_INNER is known to be valid
 
     static mut PIC: Option<Mutex<(Pic, Pic)>> = None;
+
+    mod page_tables {
+        use core::slice;
+        use kernel::KERNEL_BASE;
+        use paging::table::Entry;
+
+        extern {
+            #[no_mangle]
+            static mut KERNEL_MAP_INNER: [Entry; 1024];
+        }
+
+        static mut KERNEL_MAP: Option<*mut [Entry; 1024]> = unsafe { Some(&mut KERNEL_MAP_INNER as * mut _) };
+
+        pub unsafe fn take_kernel() -> &'static mut [Entry] {
+            let ptr = KERNEL_MAP.take().unwrap() as usize - KERNEL_BASE;
+            slice::from_raw_parts_mut(ptr as *mut _, 1024)
+        }
+    }
+
+    pub unsafe fn init_paging() {
+        let mut page_map = InactiveTable::new(page_tables::take_kernel());
+
+        // first four megabytes identity
+        page_map.default_map(Virtual::new(0), Physical::new(0));
+        // first four megabytes higher half
+        page_map.default_map(Virtual::new(KERNEL_BASE), Physical::new(0));
+
+        let mut page_map = page_map.load();
+
+        // enable pse
+        // enable paging and write protect
+        // add KERNEL_BASE to stack pointer
+        // add KERNEL_BASE to base pointer
+        // walk the call stack and add KERNEL_BASE to every saved ebp and eip
+        asm!("
+                mov     eax, cr4
+                or      eax, 1 << 4
+                mov     cr4, eax
+
+                mov     eax, cr0
+                or      eax, (1 << 31) | (1 << 16)
+                mov     cr0, eax
+
+                lea     eax, [init_paging.higher_half]
+                jmp     eax
+        init_paging.higher_half:
+                add     esp, $0
+                add     ebp, $0
+                mov     ebx, ebp
+        init_paging.stack_loop:
+                add     dword ptr [ebx + 4], $0
+
+                mov     eax, dword ptr [ebx]
+                test    eax, eax
+                jz      init_paging.stack_loop_done
+
+                add     dword ptr [ebx], $0
+                mov     ebx, eax
+                jmp     init_paging.stack_loop
+        init_paging.stack_loop_done:
+             " : : "i"(KERNEL_BASE) : "eax" "ebx" "memory" : "intel", "volatile"
+        );
+
+        page_map.unmap(Virtual::new(0));
+    }
 
     pub unsafe fn init_vga() {
         VGA = Some(Mutex::new(Vga::new()));
@@ -172,12 +242,18 @@ pub mod kernel {
 }
 
 #[no_mangle]
-pub extern "C" fn kmain() -> ! {
+pub unsafe extern "C" fn _rust_start() -> ! {
+    kernel::init_paging();
+
+    kmain();
+
+    loop {}
+}
+
+pub fn kmain() {
     use x86::shared::irq;
 
     unsafe {
-        irq::disable();
-
         kernel::init_vga();
         kprint!("vga... ");
         kprintln!(

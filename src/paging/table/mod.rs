@@ -13,11 +13,6 @@ struct Table<'a> {
 
 impl<'a> Table<'a> {
     pub fn new(inner: &'a mut [Entry]) -> Table<'a> {
-        assert!(
-            inner.as_ptr() as usize & (PAGE_SIZE - 1) == 0,
-            "page directory address must be page-aligned, addr is 0x{:08x}",
-            inner.as_ptr() as usize
-        );
         assert!(inner.len() == 1024, "page directory must have 1024 entries, is {}", inner.len());
         Table { inner }
     }
@@ -40,16 +35,12 @@ impl<'a> Table<'a> {
             .read_write()
             .page_size(PageSize::Huge)
             .build();
+
         self.map(virt, entry)
     }
 
     pub fn unmap(&mut self, virt: Virtual) -> Option<Entry> {
         self.map(virt, Entry::empty())
-    }
-
-    pub unsafe fn load(&mut self) {
-        let ptr = self.inner.as_ptr();
-        asm!("mov cr3, $0" : : "r"(ptr) : : "intel", "volatile");
     }
 
     pub unsafe fn reset_cache(&mut self) {
@@ -76,16 +67,16 @@ pub struct ActiveTable<'a> {
 }
 
 impl<'a> ActiveTable<'a> {
-    pub fn map(&mut self, virt: Virtual, entry: Entry) {
-        self.inner.map(virt, entry);
+    pub fn map(&mut self, virt: Virtual, entry: Entry) -> Option<Entry> {
+        self.inner.map(virt, entry)
     }
 
-    pub fn default_map(&mut self, virt: Virtual, phys: Physical) {
-        self.inner.default_map(virt, phys);
+    pub fn default_map(&mut self, virt: Virtual, phys: Physical) -> Option<Entry> {
+        self.inner.default_map(virt, phys)
     }
 
-    pub fn unmap(&mut self, virt: Virtual) {
-        self.inner.unmap(virt);
+    pub fn unmap(&mut self, virt: Virtual) -> Option<Entry> {
+        self.inner.unmap(virt)
     }
 
     pub fn reset_cache(&mut self) {
@@ -108,49 +99,53 @@ impl<'a> InactiveTable<'a> {
         Physical::new(self.inner.as_ptr() as usize)
     }
 
-    pub fn map(&mut self, virt: Virtual, entry: Entry) {
-        self.inner.map(virt, entry);
+    pub fn map(&mut self, virt: Virtual, entry: Entry) -> Option<Entry> {
+        self.inner.map(virt, entry)
     }
 
-    pub fn default_map(&mut self, virt: Virtual, phys: Physical) {
-        self.inner.default_map(virt, phys);
+    pub fn default_map(&mut self, virt: Virtual, phys: Physical) -> Option<Entry> {
+        self.inner.default_map(virt, phys)
     }
 
-    pub fn unmap(&mut self, virt: Virtual) {
-        self.inner.unmap(virt);
+    pub fn unmap(&mut self, virt: Virtual) -> Option<Entry> {
+        self.inner.unmap(virt)
     }
 
+    #[must_use]
     pub unsafe fn load(mut self) -> ActiveTable<'a> {
         let phys = Physical::new(self.inner.as_ptr() as usize);
-        self.default_map(Virtual::new(0xffc00000), phys);
+        let offset = phys.into_inner() & (PAGE_SIZE - 1);
+        self.default_map(Virtual::new(0xffc00000), phys & !(PAGE_SIZE - 1));
 
-        self.inner.load();
+        asm!("mov cr3, $0" : : "r"(phys) : : "intel", "volatile");
 
         ActiveTable {
-            inner: Table::new(slice::from_raw_parts_mut(0xffc00000 as *mut _, 1024)),
+            inner: Table::new(slice::from_raw_parts_mut((0xffc00000 + offset) as *mut _, 1024)),
         }
     }
 
     // addr is the virtual address to which the current active table will be mapped
+    #[must_use]
     pub fn switch<'b>(mut self, active: ActiveTable<'b>, addr: Virtual) -> (ActiveTable<'a>, InactiveTable<'b>) {
         let old_phys = Physical::new(active.inner[0x3ff].into_physical().into_inner());
+        let old_offset = old_phys.into_inner() & (PAGE_SIZE - 1);
 
         let idx = self.inner.as_ptr() as usize >> 22; // self virtual idx
         let new_phys = active.inner[idx].into_physical(); // self physical address
-        self.default_map(Virtual::new(0xffc00000), new_phys);
-        self.default_map(addr, old_phys);
-
+        let new_offset = new_phys.into_inner() & (PAGE_SIZE - 1);
+        self.default_map(Virtual::new(0xffc00000), new_phys & !(PAGE_SIZE - 1));
+        self.default_map(addr, old_phys & !(PAGE_SIZE - 1));
 
         let new_active = unsafe {
-            self.inner.load();
+            asm!("mov cr3, $0" : : "r"(new_phys) : : "intel", "volatile");
 
             ActiveTable {
-                inner: Table::new(slice::from_raw_parts_mut(0xffc00000 as *mut _, 1024)),
+                inner: Table::new(slice::from_raw_parts_mut((0xffc00000 + new_offset) as *mut _, 1024)),
             }
         };
         let new_inactive = unsafe {
             InactiveTable {
-                inner: Table::new(slice::from_raw_parts_mut(addr.into_inner() as *mut _, 1024)),
+                inner: Table::new(slice::from_raw_parts_mut((addr.into_inner() + old_offset) as *mut _, 1024)),
             }
         };
         (new_active, new_inactive)

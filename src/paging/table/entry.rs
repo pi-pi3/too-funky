@@ -8,8 +8,8 @@ use paging::addr::*;
 #[repr(C, packed)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Entry {
-    addr: u16,
     flags: u16,
+    addr: u16,
 }
 
 impl Entry {
