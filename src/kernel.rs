@@ -176,6 +176,8 @@ pub extern "C" fn kmain() -> ! {
     use x86::shared::irq;
 
     unsafe {
+        irq::disable();
+
         kernel::init_vga();
         kprint!("vga... ");
         kprintln!(
@@ -191,8 +193,6 @@ pub extern "C" fn kmain() -> ! {
             green = "\x1b[32m",
             reset = "\x1b[0m"
         );
-
-        irq::disable();
 
         kprint!("idt... ");
         kernel::init_idt();
