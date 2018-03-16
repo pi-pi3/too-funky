@@ -5,26 +5,26 @@ pub mod table;
 
 use self::addr::Physical;
 
-pub const PAGE_SIZE: usize = 0x400000;
+pub const FRAME_SIZE: usize = 0x400000;
 
-pub fn pages(inner: Range<usize>) -> Pages {
+pub fn frames(inner: Range<usize>) -> Frames {
     let inner = Range {
         start: inner.start >> 22,
         end: inner.end >> 22,
     };
-    Pages { inner }
+    Frames { inner }
 }
 
-// page iterator
+// frame iterator
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Pages {
+pub struct Frames {
     inner: Range<usize>,
 }
 
-impl Iterator for Pages {
+impl Iterator for Frames {
     type Item = Physical;
 
     fn next(&mut self) -> Option<Physical> {
-        self.inner.next().map(|page| Physical::new(page << 22))
+        self.inner.next().map(|frame| Physical::new(frame << 22))
     }
 }

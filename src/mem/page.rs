@@ -9,23 +9,23 @@ const USIZE_BITS: usize = 32;
 
 const LEN: usize = 1024 / USIZE_BITS;
 
-pub const FRAME_SIZE: usize = 0x400000;
+pub const PAGE_SIZE: usize = 0x400000;
 
-pub fn frames(inner: Range<usize>) -> Frames {
+pub fn pages(inner: Range<usize>) -> Pages {
     let inner = Range {
         start: inner.start >> 22,
         end: inner.end >> 22,
     };
-    Frames { inner }
+    Pages { inner }
 }
 
 // page iterator
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Frames {
+pub struct Pages {
     inner: Range<usize>,
 }
 
-impl Iterator for Frames {
+impl Iterator for Pages {
     type Item = Virtual;
 
     fn next(&mut self) -> Option<Virtual> {
@@ -34,7 +34,7 @@ impl Iterator for Frames {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Frame {
+pub struct Page {
     addr: Virtual,
 }
 
@@ -55,7 +55,7 @@ impl Allocator {
         let mut idx = 0;
         let mut bit = Wrapping(1_usize);
 
-        for page in frames(0 .. usize::max_value()) {
+        for page in pages(0 .. usize::max_value()) {
             if active.is_used(page) {
                 bitmap[idx] |= bit.0;
             }
@@ -68,11 +68,11 @@ impl Allocator {
         Allocator { bitmap }
     }
 
-    pub fn allocate(&mut self) -> Option<Frame> {
+    pub fn allocate(&mut self) -> Option<Page> {
         self.allocate_at(Virtual::new(0))
     }
 
-    pub fn allocate_at(&mut self, virt: Virtual) -> Option<Frame> {
+    pub fn allocate_at(&mut self, virt: Virtual) -> Option<Page> {
         let idx = virt.into_inner() >> 22;
         for idx in idx .. LEN {
             if self.bitmap[idx] != 0 {
@@ -82,10 +82,10 @@ impl Allocator {
                     if word & bit == 0 {
                         self.bitmap[idx] |= bit;
                         let addr = idx << 27 | bit << 22;
-                        let frame = Frame {
+                        let page = Page {
                             addr: Virtual::new(addr),
                         };
-                        return Some(frame);
+                        return Some(page);
                     }
                 }
             }
@@ -94,7 +94,7 @@ impl Allocator {
         None
     }
 
-    // returns the count of free frames
+    // returns the count of free pages
     pub fn free(&self) -> usize {
         let mut count = 0;
 

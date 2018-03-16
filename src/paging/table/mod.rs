@@ -1,7 +1,7 @@
 use core::slice;
 use core::ops::{Deref, DerefMut};
 
-use paging::PAGE_SIZE;
+use paging::FRAME_SIZE;
 use paging::addr::*;
 
 pub mod entry;
@@ -145,8 +145,8 @@ impl<'a> InactiveTable<'a> {
     #[must_use]
     pub unsafe fn load(mut self) -> ActiveTable<'a> {
         let phys = Physical::new(self.inner.as_ptr() as usize);
-        let offset = phys.into_inner() & (PAGE_SIZE - 1);
-        self.default_map(Virtual::new(0xffc00000), phys & !(PAGE_SIZE - 1));
+        let offset = phys.into_inner() & (FRAME_SIZE - 1);
+        self.default_map(Virtual::new(0xffc00000), phys & !(FRAME_SIZE - 1));
 
         asm!("mov $0, %cr3" : : "r"(phys) : : "volatile");
 
@@ -168,15 +168,15 @@ impl<'a> InactiveTable<'a> {
     ) -> (ActiveTable<'a>, InactiveTable<'b>) {
         let old_phys =
             Physical::new(active.inner[0x3ff].into_physical().into_inner());
-        let old_offset = old_phys.into_inner() & (PAGE_SIZE - 1);
+        let old_offset = old_phys.into_inner() & (FRAME_SIZE - 1);
 
         // self virtual idx
         let idx = self.inner.as_ptr() as usize >> 22;
         // self physical address
         let new_phys = active.inner[idx].into_physical();
-        let new_offset = new_phys.into_inner() & (PAGE_SIZE - 1);
-        self.default_map(Virtual::new(0xffc00000), new_phys & !(PAGE_SIZE - 1));
-        self.default_map(addr, old_phys & !(PAGE_SIZE - 1));
+        let new_offset = new_phys.into_inner() & (FRAME_SIZE - 1);
+        self.default_map(Virtual::new(0xffc00000), new_phys & !(FRAME_SIZE - 1));
+        self.default_map(addr, old_phys & !(FRAME_SIZE - 1));
 
         let new_active = unsafe {
             asm!("mov $0, %cr3" : : "r"(new_phys) : : "volatile");

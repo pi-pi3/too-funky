@@ -2,7 +2,7 @@
 // it makes my life simpler
 use core::fmt;
 
-use paging::PAGE_SIZE;
+use paging::FRAME_SIZE;
 use paging::addr::*;
 
 #[repr(C, packed)]
@@ -96,7 +96,7 @@ impl EntryBuilder {
     pub fn build(self) -> Entry {
         let addr = self.addr.unwrap().into_inner();
         let flags = self.flags.unwrap();
-        if addr & (PAGE_SIZE - 1) != 0 {
+        if addr & (FRAME_SIZE - 1) != 0 {
             panic!("page directory entry address must be page-aligned");
         }
         Entry {
