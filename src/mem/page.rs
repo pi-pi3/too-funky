@@ -78,9 +78,9 @@ impl Allocator {
             if self.bitmap[idx] != 0 {
                 let word = self.bitmap[idx];
                 for bit in 0 .. USIZE_BITS {
-                    let bit = 1 << bit;
-                    if word & bit == 0 {
-                        self.bitmap[idx] |= bit;
+                    let mask = 1 << bit;
+                    if word & mask == 0 {
+                        self.bitmap[idx] |= mask;
                         let addr = idx << 27 | bit << 22;
                         let page = Page {
                             addr: Virtual::new(addr),
@@ -92,6 +92,14 @@ impl Allocator {
         }
 
         None
+    }
+
+    pub fn deallocate(&mut self, page: Page) {
+        let idx = page.addr.into_inner() >> 22;
+        let bit = (idx >> 22) & 31;
+        let idx = (idx >> 27) & 31;
+        let mask = 1 << bit;
+        self.bitmap[idx] &= !mask;
     }
 
     // returns the count of free pages
