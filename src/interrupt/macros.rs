@@ -62,19 +62,19 @@ macro_rules! regs {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! pushad {
-    () => { asm!( "pushad" : : : : "intel", "volatile") }
+    () => { asm!( "pushal" : : : : "volatile") }
 }
 
 #[macro_export]
 #[doc(hidden)]
 macro_rules! popad {
-    () => { asm!( "popad" : : : : "intel", "volatile") }
+    () => { asm!( "popal" : : : : "volatile") }
 }
 
 #[macro_export]
 #[doc(hidden)]
 macro_rules! iretd {
-    () => { asm!( "iretd" : : : : "intel", "volatile") }
+    () => { asm!( "iretl" : : : : "volatile") }
 }
 
 #[macro_export]

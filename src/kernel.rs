@@ -100,32 +100,32 @@ pub mod kernel {
         // add KERNEL_BASE to base pointer
         // walk the call stack and add KERNEL_BASE to every saved ebp and eip
         asm!("
-                mov     eax, cr4
-                or      eax, 1 << 4
-                mov     cr4, eax
+                movl    %cr4, %eax
+                orl     $$0x10, %eax
+                movl    %eax, %cr4
 
-                mov     eax, cr0
-                or      eax, (1 << 31) | (1 << 16)
-                mov     cr0, eax
+                movl    %cr0, %eax
+                orl     $$0x80010000, %eax
+                movl    %eax, %cr0
 
-                lea     eax, [init_paging.higher_half]
-                jmp     eax
+                leal    init_paging.higher_half, %eax
+                jmpl    *%eax
         init_paging.higher_half:
-                add     esp, $0
-                add     ebp, $0
-                mov     ebx, ebp
+                add     $0, %esp
+                add     $0, %ebp
+                movl    %ebp, %ebx
         init_paging.stack_loop:
-                add     dword ptr [ebx + 4], $0
+                addl    $0, 4(%ebx)
 
-                mov     eax, dword ptr [ebx]
-                test    eax, eax
+                movl    (%ebx), %eax
+                test    %eax, %eax
                 jz      init_paging.stack_loop_done
 
-                add     dword ptr [ebx], $0
-                mov     ebx, eax
+                addl    $0, (%ebx)
+                movl    %eax, %ebx
                 jmp     init_paging.stack_loop
         init_paging.stack_loop_done:
-             " : : "i"(KERNEL_BASE) : "eax" "ebx" "memory" : "intel", "volatile"
+             " : : "i"(KERNEL_BASE) : "eax" "ebx" "memory" : "volatile"
         );
 
         page_map.unmap(Virtual::new(0));

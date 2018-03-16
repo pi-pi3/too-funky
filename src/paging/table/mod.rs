@@ -57,7 +57,7 @@ impl<'a> Table<'a> {
     }
 
     pub unsafe fn reset_cache(&mut self) {
-        asm!("mov eax, cr3; mov cr3, eax" : : : "eax" : "intel", "volatile");
+        asm!("mov %cr3, %eax; mov %eax, %cr3" : : : "eax" : "volatile");
     }
 }
 
@@ -148,7 +148,7 @@ impl<'a> InactiveTable<'a> {
         let offset = phys.into_inner() & (PAGE_SIZE - 1);
         self.default_map(Virtual::new(0xffc00000), phys & !(PAGE_SIZE - 1));
 
-        asm!("mov cr3, $0" : : "r"(phys) : : "intel", "volatile");
+        asm!("mov $0, %cr3" : : "r"(phys) : : "volatile");
 
         ActiveTable {
             inner: Table::new(slice::from_raw_parts_mut(
@@ -179,7 +179,7 @@ impl<'a> InactiveTable<'a> {
         self.default_map(addr, old_phys & !(PAGE_SIZE - 1));
 
         let new_active = unsafe {
-            asm!("mov cr3, $0" : : "r"(new_phys) : : "intel", "volatile");
+            asm!("mov $0, %cr3" : : "r"(new_phys) : : "volatile");
 
             ActiveTable {
                 inner: Table::new(slice::from_raw_parts_mut(
