@@ -127,7 +127,11 @@ pub unsafe fn kinit(
 
     let heap_start = kernel::KERNEL_BASE + mem_min;
     let heap_end = heap_start + 2 * FRAME_SIZE;
+    kprintln!("heap size: {}kB", (heap_end - heap_start) / 1024);
+
+    kprint!("kernel heap... ");
     kernel::init_heap(heap_start, heap_end);
+    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
     kprintln!("enabling hardware interrupts...");
     irq::enable();
