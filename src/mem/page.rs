@@ -1,4 +1,3 @@
-use core::num::Wrapping;
 use core::ops::Range;
 
 use paging::addr::Virtual;
@@ -39,6 +38,12 @@ pub struct Page {
     addr: Virtual,
 }
 
+impl Page {
+    pub fn addr(&self) -> &Virtual {
+        &self.addr
+    }
+}
+
 pub struct Allocator {
     // an array of 1024 bits
     // on x86 it's 32 bytes long, so no worries about size
@@ -54,14 +59,14 @@ impl Allocator {
     pub fn with_used<'a>(active: &'a ActiveTable<'a>) -> Allocator {
         let mut bitmap = [0_usize; LEN];
         let mut idx = 0;
-        let mut bit = Wrapping(1_usize);
+        let mut bit = 1_usize;
 
         for page in pages(0 .. usize::max_value()) {
             if active.is_used(page) {
-                bitmap[idx] |= bit.0;
+                bitmap[idx] |= bit;
             }
-            bit <<= 1;
-            if bit.0 == 1 {
+            bit = bit.rotate_left(1);
+            if bit == 1 {
                 idx += 1;
             }
         }
@@ -76,7 +81,7 @@ impl Allocator {
     pub fn allocate_at(&mut self, virt: Virtual) -> Option<Page> {
         let idx = virt.into_inner() >> 27;
         for idx in idx .. LEN {
-            if self.bitmap[idx] != 0 {
+            if self.bitmap[idx] != usize::max_value() {
                 let word = self.bitmap[idx];
                 for bit in 0 .. USIZE_BITS {
                     let mask = 1 << bit;

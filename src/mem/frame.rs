@@ -1,4 +1,3 @@
-use core::num::Wrapping;
 use core::ops::Range;
 
 use paging::addr::Physical;
@@ -38,6 +37,12 @@ pub struct Frame {
     addr: Physical,
 }
 
+impl Frame {
+    pub fn addr(&self) -> &Physical {
+        &self.addr
+    }
+}
+
 pub struct Allocator {
     // an array of 1024 bits
     // on x86 it's 32 bytes long, so no worries about size
@@ -55,12 +60,12 @@ impl Allocator {
     pub fn with_range(range: Range<usize>) -> Allocator {
         let mut bitmap = [0xffffffff_usize; LEN];
         let mut idx = range.start >> 27;
-        let mut bit = Wrapping(1_usize);
+        let mut bit = 1_usize;
 
         for _ in frames(range.clone()) {
-            bitmap[idx] &= !bit.0;
-            bit <<= 1;
-            if bit.0 == 1 {
+            bitmap[idx] &= !bit;
+            bit = bit.rotate_left(1);
+            if bit == 1 {
                 idx += 1;
             }
         }
@@ -71,7 +76,7 @@ impl Allocator {
 
     pub fn allocate(&mut self) -> Option<Frame> {
         for idx in self.range.clone() {
-            if self.bitmap[idx] != 0 {
+            if self.bitmap[idx] != usize::max_value() {
                 let word = self.bitmap[idx];
                 for bit in 0 .. USIZE_BITS {
                     let mask = 1 << bit;

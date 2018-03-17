@@ -17,6 +17,8 @@ extern crate x86;
 
 use core::fmt;
 
+use x86::shared::irq;
+
 #[macro_use]
 pub mod macros;
 #[macro_use]
@@ -29,12 +31,13 @@ pub mod syscall;
 
 use drivers::pic::{self, Pic};
 use drivers::keyboard::{self, Keycode, Scanset};
+use paging::table::ActiveTable;
 
 pub mod kernel {
     use spin::{Mutex, MutexGuard};
 
     use paging::addr::*;
-    use paging::table::InactiveTable;
+    use paging::table::{ActiveTable, InactiveTable};
     use drivers::vga::Vga;
     use drivers::pic::{Mode as PicMode, Pic};
     use drivers::keyboard;
@@ -43,7 +46,7 @@ pub mod kernel {
     use interrupt::{exceptions, lidt};
     use interrupt::idt::{self, Idt, Idtr};
 
-    const KERNEL_BASE: usize = 0xe0000000;
+    pub const KERNEL_BASE: usize = 0xe0000000;
 
     static mut VGA: Option<Mutex<Vga>> = None;
 
@@ -84,7 +87,7 @@ pub mod kernel {
         }
     }
 
-    pub unsafe fn init_paging() {
+    pub unsafe fn init_paging() -> ActiveTable<'static> {
         let mut page_map = InactiveTable::new(page_tables::take_kernel());
 
         // first four megabytes identity
@@ -129,6 +132,7 @@ pub mod kernel {
         );
 
         page_map.unmap(Virtual::new(0));
+        page_map
     }
 
     pub unsafe fn init_vga() {
@@ -243,16 +247,14 @@ pub mod kernel {
 
 #[no_mangle]
 pub unsafe extern "C" fn _rust_start() -> ! {
-    kernel::init_paging();
+    let page_table = kernel::init_paging();
 
-    kmain();
+    kmain(page_table);
 
     loop {}
 }
 
-pub fn kmain() {
-    use x86::shared::irq;
-
+pub fn kmain<'a>(_page_table: ActiveTable<'a>) {
     unsafe {
         kernel::init_vga();
 
