@@ -4,7 +4,7 @@ use core::fmt;
 pub mod entry;
 pub use self::entry::*;
 
-use interrupt::{ExceptionHandler, InterruptHandler};
+use arch::interrupt::{ExceptionHandler, InterruptHandler};
 
 #[repr(C, packed)]
 pub struct Idtr {

@@ -1,7 +1,7 @@
 use core::slice;
 use core::ops::{Deref, DerefMut};
 
-use paging::addr::*;
+use arch::paging::addr::*;
 use mem::frame::FRAME_SIZE;
 
 pub mod entry;

@@ -1,7 +1,7 @@
 use core::ops::Range;
 
-use paging::addr::Virtual;
-use paging::table::ActiveTable;
+use arch::paging::addr::Virtual;
+use arch::paging::table::ActiveTable;
 
 #[cfg(target_pointer_width = "32")]
 const USIZE_BITS: usize = 32;

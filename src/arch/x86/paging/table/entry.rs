@@ -2,7 +2,7 @@
 // it makes my life simpler
 use core::fmt;
 
-use paging::addr::*;
+use arch::paging::addr::*;
 use mem::frame::FRAME_SIZE;
 
 #[repr(C, packed)]

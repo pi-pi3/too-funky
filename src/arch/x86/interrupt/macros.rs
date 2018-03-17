@@ -31,7 +31,7 @@ macro_rules! inner_func {
         $body:block
     ) => {
         unsafe fn $func ( $( $errarg : usize ),* ) {
-            let mut regs = $crate::interrupt::macros::Args::default();
+            let mut regs = $crate::arch::interrupt::macros::Args::default();
             regs!(regs);
 
             $(
@@ -84,7 +84,7 @@ macro_rules! interrupt_handler {
             $body:block
     } => {
         #[naked]
-        pub unsafe extern fn $func ( _: $crate::interrupt::macros::NoCall ) {
+        pub unsafe extern fn $func ( _: $crate::arch::interrupt::macros::NoCall ) {
             pushad!();
             inner_func!(inner, ; $( $arg : $reg, )* $body);
             inner();
@@ -106,8 +106,8 @@ macro_rules! exception_handler {
         #[naked]
         #[allow(unused_variables)]
         pub unsafe extern fn $func (
-            args: $crate::interrupt::macros::ErrArgs<$err>,
-            _: $crate::interrupt::macros::NoCall
+            args: $crate::arch::interrupt::macros::ErrArgs<$err>,
+            _: $crate::arch::interrupt::macros::NoCall
         ) {
             pushad!();
             inner_func!(

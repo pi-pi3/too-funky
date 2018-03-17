@@ -1,6 +1,6 @@
 use core::fmt::{self, Write};
 
-use kernel;
+use arch::kernel;
 
 #[lang = "panic_fmt"]
 #[no_mangle]

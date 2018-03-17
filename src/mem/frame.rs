@@ -1,6 +1,6 @@
 use core::ops::Range;
 
-use paging::addr::Physical;
+use arch::paging::addr::Physical;
 
 #[cfg(target_pointer_width = "32")]
 const USIZE_BITS: usize = 32;

@@ -1,5 +1,5 @@
 use core::fmt::{self, Write};
-use kernel;
+use arch::kernel;
 
 #[macro_export]
 macro_rules! kprintln {

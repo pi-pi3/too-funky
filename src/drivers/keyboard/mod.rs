@@ -1,7 +1,7 @@
 use spin::Mutex;
 use x86::shared::irq;
 
-use kernel;
+use arch::kernel;
 
 mod keyboard;
 mod scancode;
