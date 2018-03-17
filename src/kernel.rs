@@ -15,10 +15,7 @@ extern crate rlibc;
 extern crate spin;
 extern crate x86;
 
-use core::fmt;
-
-use x86::shared::irq;
-
+pub mod panic;
 #[macro_use]
 pub mod macros;
 #[macro_use]
@@ -256,6 +253,8 @@ pub unsafe extern "C" fn _rust_start() -> ! {
 }
 
 pub unsafe fn kinit<'a>(_page_table: ActiveTable<'a>) {
+    use x86::shared::irq;
+
     kernel::init_vga();
 
     kprint!("paging... ");
@@ -307,25 +306,3 @@ pub fn kmain() {
         }
     }
 }
-
-#[lang = "panic_fmt"]
-#[no_mangle]
-pub extern "C" fn panic_fmt(
-    msg: fmt::Arguments,
-    file: &'static str,
-    line: u32,
-    col: u32,
-) -> ! {
-    use core::fmt::Write;
-    kernel::try_vga().map(|mut vga| {
-        let _ = vga.write_str("\x1b[0;31mkernel panicked at '");
-        let _ = vga.write_fmt(msg);
-        let _ = write!(vga, "', {}:{}:{}\x1b[0m", file, line, col);
-    });
-
-    loop {}
-}
-
-#[lang = "eh_personality"]
-#[no_mangle]
-pub extern "C" fn eh_personality() {}
