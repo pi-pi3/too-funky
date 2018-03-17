@@ -20,6 +20,9 @@ pub unsafe extern "C" fn _rust_start(
     kernel_start: usize,
     kernel_end: usize,
 ) -> ! {
+    kernel::init_vga(0xb8000 as *mut _);
+
+    kprint!("paging... ");
     let page_table = kernel::init_paging();
 
     kinit(page_table, mb2_addr, kernel_start, kernel_end);
@@ -34,11 +37,9 @@ pub unsafe fn kinit(
     _kernel_start: usize,
     kernel_end: usize,
 ) {
-    kernel::init_vga();
+    kernel::init_vga(0xe00b8000 as *mut _);
 
-    kprint!("paging... ");
-    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-
+    kprintln!("paging... {green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
     kprint!("video graphics array driver... ");
     kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
@@ -312,8 +313,8 @@ pub mod kernel {
         ::ALLOCATOR.lock().init(heap_start, heap_size);
     }
 
-    pub unsafe fn init_vga() {
-        VGA = Some(Mutex::new(Vga::new()));
+    pub unsafe fn init_vga(ptr: *mut u16) {
+        VGA = Some(Mutex::new(Vga::new(ptr)));
     }
 
     pub unsafe fn vga() -> MutexGuard<'static, Vga> {

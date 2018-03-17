@@ -158,7 +158,7 @@ pub struct Vga {
 }
 
 impl Vga {
-    pub fn new() -> Vga {
+    pub fn new(ptr: *mut u16) -> Vga {
         // enable cursor
         // copied from osdev
         unsafe {
@@ -169,10 +169,9 @@ impl Vga {
             reg_write(0x3d4, 0x0e, 0);
         }
 
-        let vga = VGA_BUFFER as *mut _;
         let color = (Shade::default_bg(), Shade::default_fg());
         let mut vga = Vga {
-            vga,
+            vga: ptr,
             color,
             y: 0,
             x: 0,
