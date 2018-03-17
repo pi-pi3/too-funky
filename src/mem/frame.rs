@@ -1,81 +1,76 @@
 use core::num::Wrapping;
 use core::ops::Range;
 
-use paging::addr::Virtual;
-use paging::table::ActiveTable;
+use paging::addr::Physical;
 
 #[cfg(target_pointer_width = "32")]
 const USIZE_BITS: usize = 32;
 
-const PAGES: usize = 1024;
-const LEN: usize = PAGES / USIZE_BITS;
+const FRAMES: usize = 1024;
+const LEN: usize = FRAMES / USIZE_BITS;
 
-pub const PAGE_SIZE: usize = 0x400000;
+pub const FRAME_SIZE: usize = 0x400000;
 
-pub fn pages(inner: Range<usize>) -> Pages {
+pub fn frames(inner: Range<usize>) -> Frames {
     let inner = Range {
         start: inner.start >> 22,
         end: (inner.end >> 22) + 1,
     };
-    Pages { inner }
+    Frames { inner }
 }
 
-// page iterator
+// frame iterator
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Pages {
+pub struct Frames {
     inner: Range<usize>,
 }
 
-impl Iterator for Pages {
-    type Item = Virtual;
+impl Iterator for Frames {
+    type Item = Physical;
 
-    fn next(&mut self) -> Option<Virtual> {
-        self.inner.next().map(|page| Virtual::new(page << 22))
+    fn next(&mut self) -> Option<Physical> {
+        self.inner.next().map(|frame| Physical::new(frame << 22))
     }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Page {
-    addr: Virtual,
+pub struct Frame {
+    addr: Physical,
 }
 
 pub struct Allocator {
     // an array of 1024 bits
     // on x86 it's 32 bytes long, so no worries about size
     bitmap: [usize; LEN],
+    range: Range<usize>, // frame blocks, not frames or physical memory
 }
 
 impl Allocator {
     pub unsafe fn new() -> Allocator {
         let bitmap = [0_usize; LEN];
-        Allocator { bitmap }
+        let range = 0 .. LEN;
+        Allocator { bitmap, range }
     }
 
-    pub fn with_used<'a>(active: &'a ActiveTable<'a>) -> Allocator {
-        let mut bitmap = [0_usize; LEN];
-        let mut idx = 0;
+    pub fn with_range(range: Range<usize>) -> Allocator {
+        let mut bitmap = [0xffffffff_usize; LEN];
+        let mut idx = range.start >> 27;
         let mut bit = Wrapping(1_usize);
 
-        for page in pages(0 .. usize::max_value()) {
-            if active.is_used(page) {
-                bitmap[idx] |= bit.0;
-            }
+        for _ in frames(range.clone()) {
+            bitmap[idx] &= !bit.0;
             bit <<= 1;
             if bit.0 == 1 {
                 idx += 1;
             }
         }
 
-        Allocator { bitmap }
+        let range = (range.start >> 27) .. (range.end >> 27) + 1;
+        Allocator { bitmap, range }
     }
 
-    pub fn allocate(&mut self) -> Option<Page> {
-        self.allocate_at(Virtual::new(0))
-    }
-
-    pub fn allocate_at(&mut self, virt: Virtual) -> Option<Page> {
-        let idx = virt.into_inner() >> 27;
-        for idx in idx .. LEN {
+    pub fn allocate(&mut self) -> Option<Frame> {
+        for idx in self.range.clone() {
             if self.bitmap[idx] != 0 {
                 let word = self.bitmap[idx];
                 for bit in 0 .. USIZE_BITS {
@@ -83,10 +78,10 @@ impl Allocator {
                     if word & mask == 0 {
                         self.bitmap[idx] |= mask;
                         let addr = idx << 27 | bit << 22;
-                        let page = Page {
-                            addr: Virtual::new(addr),
+                        let frame = Frame {
+                            addr: Physical::new(addr),
                         };
-                        return Some(page);
+                        return Some(frame);
                     }
                 }
             }
@@ -95,15 +90,15 @@ impl Allocator {
         None
     }
 
-    pub fn deallocate(&mut self, page: Page) {
-        let idx = page.addr.into_inner() >> 22;
+    pub fn deallocate(&mut self, frame: Frame) {
+        let idx = frame.addr.into_inner() >> 22;
         let bit = (idx >> 22) & 31;
         let idx = (idx >> 27) & 31;
         let mask = 1 << bit;
         self.bitmap[idx] &= !mask;
     }
 
-    // returns the count of free pages
+    // returns the count of free frames
     pub fn free(&self) -> usize {
         let mut count = 0;
 
@@ -115,6 +110,6 @@ impl Allocator {
     }
 
     pub fn used(&self) -> usize {
-        PAGES - self.free()
+        self.range.end - self.range.start - self.free()
     }
 }

@@ -2,8 +2,8 @@
 // it makes my life simpler
 use core::fmt;
 
-use paging::FRAME_SIZE;
 use paging::addr::*;
+use mem::frame::FRAME_SIZE;
 
 #[repr(C, packed)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
