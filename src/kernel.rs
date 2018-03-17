@@ -26,6 +26,10 @@ pub mod mem;
 pub mod drivers;
 pub mod syscall;
 
+#[path = "arch/x86/mod.rs"]
+#[cfg(rustfmt)]
+pub mod arch_x86;
+
 use drivers::keyboard::{self, Keycode};
 
 pub fn kmain() {

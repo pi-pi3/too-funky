@@ -53,7 +53,7 @@ pub struct Allocator {
 impl Allocator {
     pub unsafe fn new() -> Allocator {
         let bitmap = [0_usize; LEN];
-        let range = 0 .. LEN;
+        let range = 0..LEN;
         Allocator { bitmap, range }
     }
 
@@ -70,7 +70,7 @@ impl Allocator {
             }
         }
 
-        let range = (range.start >> 27) .. (range.end >> 27) + 1;
+        let range = (range.start >> 27)..(range.end >> 27) + 1;
         Allocator { bitmap, range }
     }
 
@@ -78,7 +78,7 @@ impl Allocator {
         for idx in self.range.clone() {
             if self.bitmap[idx] != usize::max_value() {
                 let word = self.bitmap[idx];
-                for bit in 0 .. USIZE_BITS {
+                for bit in 0..USIZE_BITS {
                     let mask = 1 << bit;
                     if word & mask == 0 {
                         self.bitmap[idx] |= mask;
@@ -107,7 +107,7 @@ impl Allocator {
     pub fn free(&self) -> usize {
         let mut count = 0;
 
-        for idx in 0 .. LEN {
+        for idx in 0..LEN {
             count += self.bitmap[idx].count_zeros() as usize;
         }
 

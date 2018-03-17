@@ -84,7 +84,9 @@ macro_rules! interrupt_handler {
             $body:block
     } => {
         #[naked]
-        pub unsafe extern fn $func ( _: $crate::arch::interrupt::macros::NoCall ) {
+        pub unsafe extern fn $func (
+            _: $crate::arch::interrupt::macros::NoCall
+        ) {
             pushad!();
             inner_func!(inner, ; $( $arg : $reg, )* $body);
             inner();

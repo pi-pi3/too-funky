@@ -175,7 +175,10 @@ impl<'a> InactiveTable<'a> {
         // self physical address
         let new_phys = active.inner[idx].into_physical();
         let new_offset = new_phys.into_inner() & (FRAME_SIZE - 1);
-        self.default_map(Virtual::new(0xffc00000), new_phys & !(FRAME_SIZE - 1));
+        self.default_map(
+            Virtual::new(0xffc00000),
+            new_phys & !(FRAME_SIZE - 1),
+        );
         self.default_map(addr, old_phys & !(FRAME_SIZE - 1));
 
         let new_active = unsafe {

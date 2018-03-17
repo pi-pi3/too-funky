@@ -61,7 +61,7 @@ impl Allocator {
         let mut idx = 0;
         let mut bit = 1_usize;
 
-        for page in pages(0 .. usize::max_value()) {
+        for page in pages(0..usize::max_value()) {
             if active.is_used(page) {
                 bitmap[idx] |= bit;
             }
@@ -80,10 +80,10 @@ impl Allocator {
 
     pub fn allocate_at(&mut self, virt: Virtual) -> Option<Page> {
         let idx = virt.into_inner() >> 27;
-        for idx in idx .. LEN {
+        for idx in idx..LEN {
             if self.bitmap[idx] != usize::max_value() {
                 let word = self.bitmap[idx];
-                for bit in 0 .. USIZE_BITS {
+                for bit in 0..USIZE_BITS {
                     let mask = 1 << bit;
                     if word & mask == 0 {
                         self.bitmap[idx] |= mask;
@@ -112,7 +112,7 @@ impl Allocator {
     pub fn free(&self) -> usize {
         let mut count = 0;
 
-        for idx in 0 .. LEN {
+        for idx in 0..LEN {
             count += self.bitmap[idx].count_zeros() as usize;
         }
 

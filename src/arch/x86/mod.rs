@@ -1,4 +1,4 @@
-use ::kmain;
+use kmain;
 
 #[macro_use]
 pub mod interrupt;
@@ -40,8 +40,16 @@ pub unsafe fn kinit<'a>(_page_table: ActiveTable<'a>) {
 
     kprint!("keyboard driver... ");
     let _ = keyboard::init_keys(0, 250, Scanset::Set1)
-        .map(|_| kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m"))
-        .map_err(|_| kprintln!("{red}[ERR]{reset}", red = "\x1b[31m", reset = "\x1b[0m"));
+        .map(|_| {
+            kprintln!(
+                "{green}[OK]{reset}",
+                green = "\x1b[32m",
+                reset = "\x1b[0m"
+            )
+        })
+        .map_err(|_| {
+            kprintln!("{red}[ERR]{reset}", red = "\x1b[31m", reset = "\x1b[0m")
+        });
 
     {
         kprint!("programmable interrupt controller... ");
@@ -50,11 +58,7 @@ pub unsafe fn kinit<'a>(_page_table: ActiveTable<'a>) {
         let mut pic = kernel::pic();
         pic.0.set_all();
         pic.1.set_all();
-        kprintln!(
-            "{green}[OK]{reset}",
-            green = "\x1b[32m",
-            reset = "\x1b[0m"
-        );
+        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         pic.0.clear_mask(1);
     }
