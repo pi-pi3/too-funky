@@ -8,6 +8,7 @@
 #![feature(fn_must_use)]
 #![feature(global_allocator)]
 #![feature(alloc)]
+#![feature(allocator_api)]
 #![feature(ptr_internals)]
 #![no_std]
 

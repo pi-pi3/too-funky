@@ -106,11 +106,11 @@ pub fn kinit(
         kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprint!("global descriptor table... ");
-        kernel::init_gdt();
+        unsafe { kernel::init_gdt(); }
         kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprint!("interrupt descriptor table... ");
-        kernel::init_idt();
+        unsafe { kernel::init_idt(); }
         kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprint!("keyboard driver... ");
@@ -146,18 +146,24 @@ pub fn kinit(
 }
 
 pub mod kernel {
+    use core::mem;
+    use core::slice;
     use core::ptr::Unique;
 
+    use alloc::allocator::{Alloc, Layout};
+
     use spin::{Once, Mutex, MutexGuard};
+
+    use ::ALLOCATOR;
 
     use arch::paging::addr::*;
     use arch::paging::table::{ActiveTable, InactiveTable};
 
     use arch::segmentation::{lgdt, reload_segments};
-    use arch::segmentation::gdt::{self, Gdt};
+    use arch::segmentation::gdt::{self, Gdt, Gdtr};
 
     use arch::interrupt::{exceptions, lidt};
-    use arch::interrupt::idt::Idt;
+    use arch::interrupt::idt::{self, Idt, Idtr};
 
     use mem::frame::Allocator as FrameAllocator;
     use mem::page::{PAGE_SIZE, Allocator as PageAllocator};
@@ -172,41 +178,11 @@ pub mod kernel {
     static HEAP: Once<()> = Once::new();
     static VGA: Once<Mutex<Vga>> = Once::new();
 
-    // TODO: replace the static GDT with a dynamically allocated one
-    mod gdt_inner {
-        use spin::{Once, Mutex};
+    static GDTR: Once<Gdtr> = Once::new();
+    static GDT: Once<Gdt> = Once::new();
 
-        use arch::segmentation::gdt::{Entry, Gdt, Gdtr};
-
-        pub static GDTR: Once<Gdtr> = Once::new();
-        static mut GDT_INNER: [Entry; 8] = [Entry::empty(); 8];
-        static mut GDT_REF: Mutex<Option<&'static mut [Entry; 8]>> = unsafe {
-            Mutex::new(Some(&mut GDT_INNER))
-        };
-        pub static GDT: Once<Gdt> = Once::new();
-
-        pub fn take_ref() -> Option<&'static mut [Entry; 8]> {
-            unsafe { GDT_REF.lock().take() }
-        }
-    }
-
-    // TODO: replace the static IDT with a dynamically allocated one
-    mod idt_inner {
-        use spin::{Once, Mutex};
-
-        use arch::interrupt::idt::{Entry, Idt, Idtr};
-
-        pub static IDTR: Once<Idtr> = Once::new();
-        static mut IDT_INNER: [Entry; 256] = [Entry::empty(); 256];
-        static mut IDT_REF: Mutex<Option<&'static mut [Entry; 256]>> = unsafe {
-            Mutex::new(Some(&mut IDT_INNER))
-        };
-        pub static IDT: Once<Idt> = Once::new();
-
-        pub fn take_ref() -> Option<&'static mut [Entry; 256]> {
-            unsafe { IDT_REF.lock().take() }
-        }
-    }
+    static IDTR: Once<Idtr> = Once::new();
+    static IDT: Once<Idt> = Once::new();
 
     static PIC: Once<Mutex<(Pic, Pic)>> = Once::new();
 
@@ -360,7 +336,7 @@ pub mod kernel {
                 page_table.default_map(*page.addr(), *frame.addr());
             }
 
-            ::ALLOCATOR.lock().init(heap_start, heap_size);
+            ALLOCATOR.lock().init(heap_start, heap_size);
         });
     }
 
@@ -377,12 +353,17 @@ pub mod kernel {
         VGA.try().and_then(|vga| vga.try_lock())
     }
 
-    pub fn init_gdt() {
-        let gdt = gdt_inner::GDT.call_once(|| {
-            let mut gdt = Gdt::with_table(
-                gdt_inner::take_ref()
-                    .expect("attempt to use the static gdt twice")
-            );
+    pub unsafe fn init_gdt() {
+        let gdt = GDT.call_once(|| {
+            let len = 8;
+            let ptr = (&ALLOCATOR).alloc(
+                Layout::from_size_align_unchecked(
+                    len * mem::size_of::<gdt::Entry>(),
+                    mem::size_of::<gdt::Entry>(),
+                )
+            ).unwrap();
+            let table = slice::from_raw_parts_mut(ptr as *mut _, len);
+            let mut gdt = Gdt::with_table(table);
             gdt.new_entry(
                 0x8,
                 gdt::EntryBuilder::new()
@@ -411,19 +392,24 @@ pub mod kernel {
             gdt
         });
 
-        let gdtr = gdt_inner::GDTR.call_once(|| gdt.gdtr());
-        unsafe {
-            lgdt(gdtr);
-            reload_segments(0x8, 0x10);
-        }
+        let gdtr = GDTR.call_once(|| gdt.gdtr());
+
+        lgdt(gdtr);
+        reload_segments(0x8, 0x10);
     }
 
-    pub fn init_idt() {
-        let idt = idt_inner::IDT.call_once(|| {
-            let mut idt = Idt::with_table(
-                idt_inner::take_ref()
-                    .expect("attempt to use the static idt twice")
-            );
+    pub unsafe fn init_idt() {
+        let idt = IDT.call_once(|| {
+            let len = 256;
+            let ptr = (&ALLOCATOR).alloc(
+                Layout::from_size_align_unchecked(
+                    len * mem::size_of::<idt::Entry>(),
+                    mem::size_of::<idt::Entry>(),
+                )
+            ).unwrap();
+            let table = slice::from_raw_parts_mut(ptr as *mut _, len);
+            let mut idt = Idt::with_table(table);
+
             idt.new_exception_handler(0x0, exceptions::de);
             idt.new_exception_handler(0x1, exceptions::db);
             idt.new_exception_handler(0x2, exceptions::ni);
@@ -451,8 +437,8 @@ pub mod kernel {
             idt
         });
 
-        let idtr = idt_inner::IDTR.call_once(|| idt.idtr());
-        unsafe { lidt(idtr); }
+        let idtr = IDTR.call_once(|| idt.idtr());
+        lidt(idtr);
     }
 
     pub fn init_pic(master: Pic, slave: Pic) -> &'static Mutex<(Pic, Pic)> {
