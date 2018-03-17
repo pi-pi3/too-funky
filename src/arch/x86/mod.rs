@@ -7,6 +7,8 @@ pub mod segmentation;
 
 use drivers::pic::{self, Pic};
 use drivers::keyboard::{self, Scanset};
+use mem::frame::Allocator as FrameAllocator;
+use mem::page::Allocator as PageAllocator;
 use arch::paging::table::ActiveTable;
 
 #[no_mangle]
@@ -19,8 +21,13 @@ pub unsafe extern "C" fn _rust_start() -> ! {
     loop {}
 }
 
-pub unsafe fn kinit<'a>(_page_table: ActiveTable<'a>) {
+pub unsafe fn kinit(page_table: ActiveTable<'static>) {
     use x86::shared::irq;
+    // TODO: get available from multiboot tags
+    let frame_alloc = FrameAllocator::with_range(0..usize::max_value());
+    let page_alloc = PageAllocator::with_used(&page_table);
+    kernel::set_allocator_pair(frame_alloc, page_alloc);
+    kernel::set_page_table(page_table);
 
     kernel::init_vga();
 
@@ -80,6 +87,9 @@ pub mod kernel {
     use arch::interrupt::{exceptions, lidt};
     use arch::interrupt::idt::{self, Idt, Idtr};
 
+    use mem::frame::Allocator as FrameAllocator;
+    use mem::page::Allocator as PageAllocator;
+
     use drivers::vga::Vga;
     use drivers::pic::{Mode as PicMode, Pic};
     use drivers::keyboard;
@@ -105,6 +115,10 @@ pub mod kernel {
     }; // IDT_INNER is known to be valid
 
     static mut PIC: Option<Mutex<(Pic, Pic)>> = None;
+
+    static mut FRAME_ALLOC: Option<Mutex<FrameAllocator>> = None;
+    static mut PAGE_ALLOC: Option<Mutex<PageAllocator>> = None;
+    static mut PAGE_TABLE: Option<Mutex<ActiveTable<'static>>> = None;
 
     mod page_tables {
         use core::slice;
@@ -171,6 +185,39 @@ pub mod kernel {
 
         page_map.unmap(Virtual::new(0));
         page_map
+    }
+
+    pub unsafe fn set_page_table(page_table: ActiveTable<'static>) {
+        PAGE_TABLE = Some(Mutex::new(page_table));
+    }
+
+    pub unsafe fn set_allocator_pair(frame: FrameAllocator, page: PageAllocator) {
+        FRAME_ALLOC = Some(Mutex::new(frame));
+        PAGE_ALLOC = Some(Mutex::new(page));
+    }
+
+    pub unsafe fn page_table() -> MutexGuard<'static, ActiveTable<'static>> {
+        PAGE_TABLE.as_ref().unwrap().lock()
+    }
+
+    pub fn try_page_table() -> Option<MutexGuard<'static, ActiveTable<'static>>> {
+        unsafe { PAGE_TABLE.as_ref().and_then(|table| table.try_lock()) }
+    }
+
+    pub unsafe fn frame_alloc() -> MutexGuard<'static, FrameAllocator> {
+        FRAME_ALLOC.as_ref().unwrap().lock()
+    }
+
+    pub fn try_frame_alloc() -> Option<MutexGuard<'static, FrameAllocator>> {
+        unsafe { FRAME_ALLOC.as_ref().and_then(|alloc| alloc.try_lock()) }
+    }
+
+    pub unsafe fn page_alloc() -> MutexGuard<'static, PageAllocator> {
+        PAGE_ALLOC.as_ref().unwrap().lock()
+    }
+
+    pub fn try_page_alloc() -> Option<MutexGuard<'static, PageAllocator>> {
+        unsafe { PAGE_ALLOC.as_ref().and_then(|alloc| alloc.try_lock()) }
     }
 
     pub unsafe fn init_vga() {
