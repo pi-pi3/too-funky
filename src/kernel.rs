@@ -14,6 +14,7 @@ extern crate compiler_builtins;
 extern crate rlibc;
 extern crate spin;
 extern crate x86;
+extern crate multiboot2;
 
 #[macro_use]
 pub mod macros;

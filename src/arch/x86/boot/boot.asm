@@ -22,7 +22,8 @@ _start:
         push    kernel_end
         push    kernel_start
         push    ebx ; mbi addr
-        push    eax ; mb2 magic
+        ;; skip mb2 magic
+        ; push    eax ; mb2 magic
 
         call    _rust_start
 .end:

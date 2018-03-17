@@ -1,3 +1,6 @@
+use multiboot2;
+use x86::shared::irq;
+
 use kmain;
 
 #[macro_use]
@@ -7,28 +10,30 @@ pub mod segmentation;
 
 use drivers::pic::{self, Pic};
 use drivers::keyboard::{self, Scanset};
-use mem::frame::Allocator as FrameAllocator;
+use mem::frame::{FRAME_SIZE, Allocator as FrameAllocator};
 use mem::page::Allocator as PageAllocator;
 use arch::paging::table::ActiveTable;
 
 #[no_mangle]
-pub unsafe extern "C" fn _rust_start() -> ! {
+pub unsafe extern "C" fn _rust_start(
+    mb2_addr: usize,
+    kernel_start: usize,
+    kernel_end: usize,
+) -> ! {
     let page_table = kernel::init_paging();
 
-    kinit(page_table);
+    kinit(page_table, mb2_addr, kernel_start, kernel_end);
     kmain();
 
     loop {}
 }
 
-pub unsafe fn kinit(page_table: ActiveTable<'static>) {
-    use x86::shared::irq;
-    // TODO: get available from multiboot tags
-    let frame_alloc = FrameAllocator::with_range(0..usize::max_value());
-    let page_alloc = PageAllocator::with_used(&page_table);
-    kernel::set_allocator_pair(frame_alloc, page_alloc);
-    kernel::set_page_table(page_table);
-
+pub unsafe fn kinit(
+    page_table: ActiveTable<'static>,
+    mb2_addr: usize,
+    _kernel_start: usize,
+    kernel_end: usize,
+) {
     kernel::init_vga();
 
     kprint!("paging... ");
@@ -36,6 +41,56 @@ pub unsafe fn kinit(page_table: ActiveTable<'static>) {
 
     kprint!("video graphics array driver... ");
     kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+
+    let mb2 = multiboot2::load(mb2_addr);
+
+    let mut mem_min = kernel_end - kernel::KERNEL_BASE;
+    let mut mem_max = 0;
+    let mem_size;
+
+    // first get total available memory
+    let memory_map = mb2.memory_map_tag()
+        .unwrap_or_else(|| panic!("no memory map in mb2 header"));
+
+    for area in memory_map.memory_areas() {
+        let mut addr = area.start_address() as usize;
+        if addr > kernel::KERNEL_BASE {
+            addr -= kernel::KERNEL_BASE;
+        }
+        mem_min = mem_min.max(addr);
+        mem_max = mem_max.max(area.end_address() as usize);
+    }
+
+    // then subtract elf sections
+    let elf_sections = mb2.elf_sections_tag()
+        .unwrap_or_else(|| panic!("no elf sections in mb2 header"));
+
+    for sect in elf_sections.sections() {
+        let mut addr = sect.start_address() as usize;
+        if addr > kernel::KERNEL_BASE {
+            addr -= kernel::KERNEL_BASE;
+        }
+        mem_min = mem_min.max(addr);
+    }
+
+    // round to page boundaries
+    mem_min = (mem_min + FRAME_SIZE) & 0xffc00000;
+    mem_max = (mem_max & 0xffc00000) - 1;
+    mem_size = mem_max - mem_min + 1;
+
+    kprint!("memory areas... ");
+    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+    kprintln!(
+        "available memory: {:x}..{:x} == {}MB",
+        mem_min,
+        mem_max + 1,
+        mem_size / (1024 * 1024)
+    );
+
+    let frame_alloc = FrameAllocator::with_range(mem_min..mem_max);
+    let page_alloc = PageAllocator::with_used(&page_table);
+    kernel::set_allocator_pair(frame_alloc, page_alloc);
+    kernel::set_page_table(page_table);
 
     kprint!("global descriptor table... ");
     kernel::init_gdt();
