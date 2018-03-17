@@ -249,56 +249,56 @@ pub mod kernel {
 pub unsafe extern "C" fn _rust_start() -> ! {
     let page_table = kernel::init_paging();
 
-    kmain(page_table);
+    kinit(page_table);
+    kmain();
 
     loop {}
 }
 
-pub fn kmain<'a>(_page_table: ActiveTable<'a>) {
-    unsafe {
-        kernel::init_vga();
+pub unsafe fn kinit<'a>(_page_table: ActiveTable<'a>) {
+    kernel::init_vga();
 
-        kprint!("paging... ");
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+    kprint!("paging... ");
+    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
-        kprint!("video graphics array driver... ");
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+    kprint!("video graphics array driver... ");
+    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
-        kprint!("global descriptor table... ");
-        kernel::init_gdt();
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+    kprint!("global descriptor table... ");
+    kernel::init_gdt();
+    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
-        kprint!("interrupt descriptor table... ");
-        kernel::init_idt();
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+    kprint!("interrupt descriptor table... ");
+    kernel::init_idt();
+    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
-        kprint!("keyboard driver... ");
-        keyboard::init_keys(0, 250, Scanset::Set1).unwrap_or_else(|_| {
-            kprintln!("{red}[ERR]{reset}", red = "\x1b[31m", reset = "\x1b[0m");
-        });
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+    kprint!("keyboard driver... ");
+    let _ = keyboard::init_keys(0, 250, Scanset::Set1)
+        .map(|_| kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m"))
+        .map_err(|_| kprintln!("{red}[ERR]{reset}", red = "\x1b[31m", reset = "\x1b[0m"));
 
-        {
-            kprint!("programmable interrupt controller... ");
-            kernel::init_pic(Pic::new(pic::PIC1), Pic::new(pic::PIC2));
+    {
+        kprint!("programmable interrupt controller... ");
+        kernel::init_pic(Pic::new(pic::PIC1), Pic::new(pic::PIC2));
 
-            let mut pic = kernel::pic();
-            pic.0.set_all();
-            pic.1.set_all();
-            kprintln!(
-                "{green}[OK]{reset}",
-                green = "\x1b[32m",
-                reset = "\x1b[0m"
-            );
+        let mut pic = kernel::pic();
+        pic.0.set_all();
+        pic.1.set_all();
+        kprintln!(
+            "{green}[OK]{reset}",
+            green = "\x1b[32m",
+            reset = "\x1b[0m"
+        );
 
-            pic.0.clear_mask(1);
-        }
-
-        kprintln!("enabling hardware interrupts...");
-        kprintln!("you're on your own now...");
-        irq::enable();
+        pic.0.clear_mask(1);
     }
 
+    kprintln!("enabling hardware interrupts...");
+    irq::enable();
+    kprintln!("you're on your own now...");
+}
+
+pub fn kmain() {
     kprint!("> ");
     loop {
         match keyboard::poll() {
