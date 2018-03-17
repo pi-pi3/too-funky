@@ -37,10 +37,70 @@ pub fn kinit(
     kernel_end: usize,
 ) {
     KINIT.call_once(|| {
+        let mb2 = unsafe { multiboot2::load(mb2_addr) };
+
+        let mut mem_min = kernel_end - kernel::KERNEL_BASE;
+        let mut mem_max = 0;
+        let mem_size;
+
+        // first get total available memory
+        let memory_map = mb2.memory_map_tag()
+            .unwrap_or_else(|| panic!("no memory map in mb2 header"));
+
+        for area in memory_map.memory_areas() {
+            let mut addr = area.start_address() as usize;
+            if addr > kernel::KERNEL_BASE {
+                addr -= kernel::KERNEL_BASE;
+            }
+            mem_min = mem_min.max(addr);
+            mem_max = mem_max.max(area.end_address() as usize);
+        }
+
+        // then subtract elf sections
+        let elf_sections = mb2.elf_sections_tag()
+            .unwrap_or_else(|| panic!("no elf sections in mb2 header"));
+
+        for sect in elf_sections.sections() {
+            let mut addr = sect.start_address() as usize;
+            if addr > kernel::KERNEL_BASE {
+                addr -= kernel::KERNEL_BASE;
+            }
+            mem_min = mem_min.max(addr);
+        }
+
+        // round to page boundaries
+        mem_min = (mem_min + FRAME_SIZE) & 0xffc00000;
+        mem_max = (mem_max & 0xffc00000) - 1;
+        mem_size = mem_max - mem_min + 1;
+
+        let frame_alloc = FrameAllocator::with_range(mem_min..mem_max);
+        let page_alloc = PageAllocator::with_used(&page_table);
+        kernel::set_allocator_pair(frame_alloc, page_alloc);
+        kernel::set_page_table(page_table);
+
+        let heap_start = kernel::KERNEL_BASE + mem_min;
+        let heap_end = heap_start + 2 * FRAME_SIZE;
+
+        unsafe { kernel::init_heap(heap_start, heap_end); }
+
         kernel::init_vga();
 
         kprint!("paging... ");
         kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+
+        kprint!("memory areas... ");
+        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+        kprintln!(
+            "available memory: {:x}..{:x} == {}MB",
+            mem_min,
+            mem_max + 1,
+            mem_size / (1024 * 1024)
+        );
+
+        kprint!("kernel heap... ");
+        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+
+        kprintln!("heap size: {}kB", (heap_end - heap_start) / 1024);
 
         kprint!("video graphics array driver... ");
         kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
@@ -78,63 +138,6 @@ pub fn kinit(
             kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
         }
 
-        let mb2 = unsafe { multiboot2::load(mb2_addr) };
-
-        let mut mem_min = kernel_end - kernel::KERNEL_BASE;
-        let mut mem_max = 0;
-        let mem_size;
-
-        // first get total available memory
-        let memory_map = mb2.memory_map_tag()
-            .unwrap_or_else(|| panic!("no memory map in mb2 header"));
-
-        for area in memory_map.memory_areas() {
-            let mut addr = area.start_address() as usize;
-            if addr > kernel::KERNEL_BASE {
-                addr -= kernel::KERNEL_BASE;
-            }
-            mem_min = mem_min.max(addr);
-            mem_max = mem_max.max(area.end_address() as usize);
-        }
-
-        // then subtract elf sections
-        let elf_sections = mb2.elf_sections_tag()
-            .unwrap_or_else(|| panic!("no elf sections in mb2 header"));
-
-        for sect in elf_sections.sections() {
-            let mut addr = sect.start_address() as usize;
-            if addr > kernel::KERNEL_BASE {
-                addr -= kernel::KERNEL_BASE;
-            }
-            mem_min = mem_min.max(addr);
-        }
-
-        // round to page boundaries
-        mem_min = (mem_min + FRAME_SIZE) & 0xffc00000;
-        mem_max = (mem_max & 0xffc00000) - 1;
-        mem_size = mem_max - mem_min + 1;
-
-        kprint!("memory areas... ");
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-        kprintln!(
-            "available memory: {:x}..{:x} == {}MB",
-            mem_min,
-            mem_max + 1,
-            mem_size / (1024 * 1024)
-        );
-
-        let frame_alloc = FrameAllocator::with_range(mem_min..mem_max);
-        let page_alloc = PageAllocator::with_used(&page_table);
-        kernel::set_allocator_pair(frame_alloc, page_alloc);
-        kernel::set_page_table(page_table);
-
-        let heap_start = kernel::KERNEL_BASE + mem_min;
-        let heap_end = heap_start + 2 * FRAME_SIZE;
-        kprintln!("heap size: {}kB", (heap_end - heap_start) / 1024);
-
-        kprint!("kernel heap... ");
-        unsafe { kernel::init_heap(heap_start, heap_end); }
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprintln!("enabling hardware interrupts...");
         unsafe { irq::enable(); }
