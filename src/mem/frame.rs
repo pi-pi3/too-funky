@@ -60,7 +60,8 @@ impl Allocator {
     pub fn with_range(range: Range<usize>) -> Allocator {
         let mut bitmap = [0xffffffff_usize; LEN];
         let mut idx = range.start >> 27;
-        let mut bit = 1_usize;
+        let bit = (range.start >> 22) & 0x31;
+        let mut bit = 1_usize << bit;
 
         for _ in frames(range.clone()) {
             bitmap[idx] &= !bit;

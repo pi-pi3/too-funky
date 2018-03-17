@@ -42,6 +42,39 @@ pub unsafe fn kinit(
     kprint!("video graphics array driver... ");
     kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
+    kprint!("global descriptor table... ");
+    kernel::init_gdt();
+    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+
+    kprint!("interrupt descriptor table... ");
+    kernel::init_idt();
+    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+
+    kprint!("keyboard driver... ");
+    let _ = keyboard::init_keys(0, 250, Scanset::Set1)
+        .map(|_| {
+            kprintln!(
+                "{green}[OK]{reset}",
+                green = "\x1b[32m",
+                reset = "\x1b[0m"
+            )
+        })
+        .map_err(|_| {
+            kprintln!("{red}[ERR]{reset}", red = "\x1b[31m", reset = "\x1b[0m")
+        });
+
+    {
+        kprint!("programmable interrupt controller... ");
+        kernel::init_pic(Pic::new(pic::PIC1), Pic::new(pic::PIC2));
+
+        let mut pic = kernel::pic();
+        pic.0.set_all();
+        pic.1.set_all();
+        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+
+        pic.0.clear_mask(1);
+    }
+
     let mb2 = multiboot2::load(mb2_addr);
 
     let mut mem_min = kernel_end - kernel::KERNEL_BASE;
@@ -92,38 +125,9 @@ pub unsafe fn kinit(
     kernel::set_allocator_pair(frame_alloc, page_alloc);
     kernel::set_page_table(page_table);
 
-    kprint!("global descriptor table... ");
-    kernel::init_gdt();
-    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-
-    kprint!("interrupt descriptor table... ");
-    kernel::init_idt();
-    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-
-    kprint!("keyboard driver... ");
-    let _ = keyboard::init_keys(0, 250, Scanset::Set1)
-        .map(|_| {
-            kprintln!(
-                "{green}[OK]{reset}",
-                green = "\x1b[32m",
-                reset = "\x1b[0m"
-            )
-        })
-        .map_err(|_| {
-            kprintln!("{red}[ERR]{reset}", red = "\x1b[31m", reset = "\x1b[0m")
-        });
-
-    {
-        kprint!("programmable interrupt controller... ");
-        kernel::init_pic(Pic::new(pic::PIC1), Pic::new(pic::PIC2));
-
-        let mut pic = kernel::pic();
-        pic.0.set_all();
-        pic.1.set_all();
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-
-        pic.0.clear_mask(1);
-    }
+    let heap_start = kernel::KERNEL_BASE + mem_min;
+    let heap_end = heap_start + 2 * FRAME_SIZE;
+    kernel::init_heap(heap_start, heap_end);
 
     kprintln!("enabling hardware interrupts...");
     irq::enable();
@@ -143,7 +147,7 @@ pub mod kernel {
     use arch::interrupt::idt::{self, Idt, Idtr};
 
     use mem::frame::Allocator as FrameAllocator;
-    use mem::page::Allocator as PageAllocator;
+    use mem::page::{PAGE_SIZE, Allocator as PageAllocator};
 
     use drivers::vga::Vga;
     use drivers::pic::{Mode as PicMode, Pic};
@@ -273,6 +277,35 @@ pub mod kernel {
 
     pub fn try_page_alloc() -> Option<MutexGuard<'static, PageAllocator>> {
         unsafe { PAGE_ALLOC.as_ref().and_then(|alloc| alloc.try_lock()) }
+    }
+
+    pub unsafe fn init_heap(heap_start: usize, heap_end: usize) {
+        let heap_size = heap_end - heap_start;
+        assert!(heap_size >= PAGE_SIZE, "the heap must be at least {}kB big, is {}kB", PAGE_SIZE / 1024, heap_size / 1024);
+
+        let mut page_table = page_table();
+        let mut page_alloc = page_alloc();
+        let mut frame_alloc = frame_alloc();
+
+        let pages = heap_size >> 22;
+        
+        for i in 0..pages {
+            // these will never be freed anyway
+            let page = page_alloc.allocate_at(Virtual::new(heap_start));
+            let frame = frame_alloc.allocate();
+            assert!(
+                page.is_some(),
+                "couldn't allocate {}-th heap page at {}",
+                i,
+                heap_start,
+            );
+            assert!(frame.is_some(), "couldn't allocate {}-th heap frame", i);
+            let page = page.unwrap();
+            let frame = frame.unwrap();
+            page_table.default_map(*page.addr(), *frame.addr());
+        }
+
+        ::ALLOCATOR.lock().init(heap_start, heap_size);
     }
 
     pub unsafe fn init_vga() {
