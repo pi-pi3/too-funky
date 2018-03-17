@@ -8,8 +8,10 @@
 #![feature(fn_must_use)]
 #![feature(global_allocator)]
 #![feature(alloc)]
+#![feature(ptr_internals)]
 #![no_std]
 
+#[allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
 #[macro_use]
@@ -48,7 +50,7 @@ pub static ALLOCATOR: LockedHeap = LockedHeap::empty();
 pub fn kmain() {
     kprint!("> ");
     loop {
-        match keyboard::poll() {
+        match keyboard::poll().unwrap() {
             Keycode::Enter => kprint!("\n> "),
             k => kprint!("{}", k),
         }

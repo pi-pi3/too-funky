@@ -19,7 +19,7 @@ impl fmt::LowerHex for Idtr {
 }
 
 pub struct Idt<'a> {
-    pub(crate) inner: &'a mut [Entry],
+    inner: &'a mut [Entry],
 }
 
 impl<'a> Idt<'a> {

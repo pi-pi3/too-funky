@@ -51,11 +51,6 @@ pub struct Allocator {
 }
 
 impl Allocator {
-    pub unsafe fn new() -> Allocator {
-        let bitmap = [0_usize; LEN];
-        Allocator { bitmap }
-    }
-
     pub fn with_used<'a>(active: &'a ActiveTable<'a>) -> Allocator {
         let mut bitmap = [0_usize; LEN];
         let mut idx = 0;

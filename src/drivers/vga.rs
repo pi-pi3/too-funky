@@ -1,15 +1,32 @@
+use core::ptr::Unique;
 use core::cmp::Ordering;
 use core::fmt::{self, Write};
 
 use x86::shared::io;
 
-const VGA_BUFFER: usize = 0xe00b8000;
 const WIDTH: usize = 80;
 const HEIGHT: usize = 25;
+const SIZE: usize = WIDTH * HEIGHT;
 
-unsafe fn reg_write(port: u16, index: u8, data: u8) {
-    io::outb(port, index);
-    io::outb(port + 1, data);
+#[derive(Debug, PartialEq, Eq, Hash)]
+enum Port {
+    X3d4,
+}
+
+impl Port {
+    pub fn into_portno(&self) -> u16 {
+        match *self {
+            Port::X3d4 => 0x3d4,
+        }
+    }
+
+    pub fn write(&mut self, index: u8, data: u8) {
+        let port = self.into_portno();
+        unsafe {
+            io::outb(port, index);
+            io::outb(port + 1, data);
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -150,7 +167,7 @@ enum State {
 }
 
 pub struct Vga {
-    vga: *mut u16,
+    vga: Unique<u16>,
     color: (Shade, Shade),
     y: i16,
     x: i16,
@@ -158,16 +175,14 @@ pub struct Vga {
 }
 
 impl Vga {
-    pub fn new(ptr: *mut u16) -> Vga {
+    pub fn new(ptr: Unique<u16>) -> Vga {
         // enable cursor
         // copied from osdev
-        unsafe {
-            reg_write(0x3d4, 0x0a, io::inb(0x3d5) & 0xc0);
-            reg_write(0x3d4, 0x0b, (io::inb(0x3e0) & 0xe0) | 15);
+        Port::X3d4.write(0x0a, unsafe { io::inb(0x3d5) & 0xc0 });
+        Port::X3d4.write(0x0b, unsafe { (io::inb(0x3e0) & 0xe0) | 15 });
 
-            reg_write(0x3d4, 0x0f, 0);
-            reg_write(0x3d4, 0x0e, 0);
-        }
+        Port::X3d4.write(0x0f, 0);
+        Port::X3d4.write(0x0e, 0);
 
         let color = (Shade::default_bg(), Shade::default_fg());
         let mut vga = Vga {
@@ -184,9 +199,7 @@ impl Vga {
     pub fn cls(&mut self) {
         let ch = Char::default().into();
         for i in 0..WIDTH * HEIGHT {
-            unsafe {
-                self.write_raw(ch, i);
-            }
+            self.write_raw(ch, i);
         }
     }
 
@@ -266,8 +279,11 @@ impl Vga {
     }
 
     #[inline]
-    unsafe fn write_raw(&mut self, ch: u16, offset: usize) {
-        *self.vga.add(offset) = ch;
+    fn write_raw(&mut self, ch: u16, offset: usize) {
+        unsafe {
+            let ptr = self.vga.as_ptr().add(offset % SIZE);
+            *ptr = ch;
+        }
     }
 
     //   - ^[[<COUNT>A, ^[<COUNT>B, ^[<COUNT>C, ^[<COUNT>D
@@ -383,9 +399,7 @@ impl Vga {
                 byte => {
                     let ch = Char(self.color.0, self.color.1, byte);
                     let offset = self.offset();
-                    unsafe {
-                        self.write_raw(u16::from(ch), offset);
-                    }
+                    self.write_raw(u16::from(ch), offset);
                     self.next();
                 }
             },
@@ -398,18 +412,14 @@ impl Vga {
         }
 
         let offset = self.offset();
-        unsafe {
-            self.write_raw(Char::default().into(), offset);
-        }
+        self.write_raw(Char::default().into(), offset);
 
         // update cursor
         let offset = self.offset() as u16;
         let hi = (offset >> 8) as u8;
         let lo = (offset & 0xff) as u8;
-        unsafe {
-            reg_write(0x3d4, 0x0f, lo);
-            reg_write(0x3d4, 0x0e, hi);
-        }
+        Port::X3d4.write(0x0f, lo);
+        Port::X3d4.write(0x0e, hi);
     }
 }
 

@@ -1,7 +1,23 @@
 use x86::shared::io;
 
-pub const PIC1: u16 = 0x20;
-pub const PIC2: u16 = 0xa0;
+const PIC1: u16 = 0x20;
+const PIC2: u16 = 0xa0;
+
+// TODO: it's not safe to allow any number of drivers being created
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum Port {
+    Pic1,
+    Pic2,
+}
+
+impl Port {
+    pub fn into_portno(&self) -> u16 {
+        match *self {
+            Port::Pic1 => PIC1,
+            Port::Pic2 => PIC2,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Mode {
@@ -23,7 +39,8 @@ pub struct Pic {
 }
 
 impl Pic {
-    pub unsafe fn new(port: u16) -> Pic {
+    pub unsafe fn new(port: Port) -> Pic {
+        let port = port.into_portno();
         Pic {
             com: port,
             dat: port + 1,

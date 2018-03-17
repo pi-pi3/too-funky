@@ -29,7 +29,7 @@ macro_rules! kprint {
 
 pub fn kprintf(args: fmt::Arguments, file: &'static str, line: u32) {
     let result = {
-        let mut vga = unsafe { kernel::vga() };
+        let mut vga = kernel::vga();
         vga.write_fmt(args)
     };
 
@@ -40,6 +40,6 @@ pub fn kprintf(args: fmt::Arguments, file: &'static str, line: u32) {
 }
 
 pub fn kputs(string: &str) {
-    let mut vga = unsafe { kernel::vga() };
+    let mut vga = kernel::vga();
     let _ = vga.write_str(string); // always succeeds
 }

@@ -51,12 +51,6 @@ pub struct Allocator {
 }
 
 impl Allocator {
-    pub unsafe fn new() -> Allocator {
-        let bitmap = [0_usize; LEN];
-        let range = 0..LEN;
-        Allocator { bitmap, range }
-    }
-
     pub fn with_range(range: Range<usize>) -> Allocator {
         let mut bitmap = [0xffffffff_usize; LEN];
         let mut idx = range.start >> 27;

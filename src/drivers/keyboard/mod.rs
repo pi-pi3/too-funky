@@ -1,4 +1,4 @@
-use spin::Mutex;
+use spin::{Once, Mutex};
 use x86::shared::irq;
 
 use arch::kernel;
@@ -14,13 +14,13 @@ pub use self::keyboard::Scanset;
 
 static mut KEYS: [bool; 256] = [false; 256];
 static mut INPUT: [Keycode; 256] = [Keycode::Unknown; 256];
-static mut KEYBOARD: Option<Mutex<Keyboard<'static>>> = None;
+static KEYBOARD: Once<Option<Mutex<Keyboard<'static>>>> = Once::new();
 
 interrupt_handlers! {
     pub unsafe extern fn handler() {
         let key = Scancode::poll(0x60);
 
-        KEYBOARD.as_mut()
+        try_keyboard()
             .and_then(|keyboard| keyboard.try_lock())
             .and_then(|mut keyboard| keyboard.input(key));
 
@@ -30,72 +30,69 @@ interrupt_handlers! {
     }
 }
 
-pub unsafe fn init_keys(
+pub fn init_keys(
     delay: u8,
     repeat: u16,
     scanset: Scanset,
 ) -> Result<(), ()> {
-    let keyboard = Keyboard::new(delay, repeat, &mut KEYS, &mut INPUT, scanset)
-        .map(|keyboard| Mutex::new(keyboard));
-    if keyboard.is_some() {
-        KEYBOARD = keyboard;
-        Ok(())
-    } else {
-        Err(())
-    }
+    let keyboard = KEYBOARD.call_once(move || {
+        unsafe { Keyboard::new(delay, repeat, &mut KEYS, &mut INPUT, scanset) }
+            .map(|keyboard| Mutex::new(keyboard))
+    });
+
+    keyboard.as_ref().map(|_| ()).ok_or(())
 }
 
-pub fn poll() -> Keycode {
-    loop {
-        unsafe {
-            irq::disable();
+fn try_keyboard() -> Option<&'static Mutex<Keyboard<'static>>> {
+    KEYBOARD.try()
+        .and_then(|keyboard| keyboard.as_ref())
+}
+
+pub fn poll() -> Option<Keycode> {
+    try_keyboard().map(|keyboard| {
+        loop {
+            unsafe { irq::disable(); }
+
+            let result = {
+                let mut key = keyboard.lock();
+                key.last()
+            };
+
+            unsafe { irq::enable(); }
+
+            if result.is_some() {
+                break result.unwrap();
+            }
         }
+    })
+}
+
+pub fn modifiers() -> Option<Mod> {
+    try_keyboard().map(|keyboard| {
+        unsafe { irq::disable(); }
+    
+        let result = {
+            let key = keyboard.lock();
+            key.modifiers()
+        };
+    
+        unsafe { irq::enable(); }
+    
+        result
+    })
+}
+
+pub fn is_pressed(keycode: Keycode) -> Option<bool> {
+    try_keyboard().map(|keyboard| {
+        unsafe { irq::disable(); }
 
         let result = {
-            let mut key = unsafe { KEYBOARD.as_ref() }.unwrap().lock();
-            key.last()
+            let key = keyboard.lock();
+            key.is_pressed(keycode)
         };
 
-        unsafe {
-            irq::enable();
-        }
+        unsafe { irq::enable(); }
 
-        if result.is_some() {
-            break result.unwrap();
-        }
-    }
-}
-
-pub fn modifiers() -> Mod {
-    unsafe {
-        irq::disable();
-    }
-
-    let result = {
-        let key = unsafe { KEYBOARD.as_ref() }.unwrap().lock();
-        key.modifiers()
-    };
-
-    unsafe {
-        irq::enable();
-    }
-
-    result
-}
-
-pub fn is_pressed(keycode: Keycode) -> bool {
-    unsafe {
-        irq::disable();
-    }
-
-    let result = {
-        let key = unsafe { KEYBOARD.as_ref() }.unwrap().lock();
-        key.is_pressed(keycode)
-    };
-
-    unsafe {
-        irq::enable();
-    }
-
-    result
+        result
+    })
 }

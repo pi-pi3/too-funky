@@ -19,7 +19,7 @@ impl fmt::LowerHex for Gdtr {
 }
 
 pub struct Gdt<'a> {
-    pub(crate) inner: &'a mut [Entry],
+    inner: &'a mut [Entry],
 }
 
 impl<'a> Gdt<'a> {
