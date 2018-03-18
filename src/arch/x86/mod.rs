@@ -186,17 +186,10 @@ pub mod kernel {
     use drivers::pic::{Mode as PicMode, Port as PicPort, Pic};
     use drivers::keyboard;
 
-    const VGA_BASE: *mut u16 = 0xb8000 as *mut _;
+    const VGA_BASE: usize = 0xb8000;
     pub const KERNEL_BASE: usize = 0xe0000000;
 
-    static HEAP: Once<()> = Once::new();
     static VGA: Once<Mutex<Vga>> = Once::new();
-
-    static GDTR: Once<Gdtr> = Once::new();
-    static GDT: Once<Gdt> = Once::new();
-
-    static IDTR: Once<Idtr> = Once::new();
-    static IDT: Once<Idt> = Once::new();
 
     static PIC: Once<Mutex<(Pic, Pic)>> = Once::new();
 
@@ -297,6 +290,8 @@ pub mod kernel {
     }
 
     pub unsafe fn init_heap(heap_start: usize, heap_end: usize) {
+        static HEAP: Once<()> = Once::new();
+
         HEAP.call_once(|| {
             let heap_size = heap_end - heap_start;
             assert!(
@@ -337,7 +332,8 @@ pub mod kernel {
     }
 
     pub fn init_vga<'a>() -> &'a Mutex<Vga> {
-        let ptr = unsafe { Unique::new_unchecked(VGA_BASE.add(KERNEL_BASE / 2)) };
+        let ptr = (VGA_BASE + KERNEL_BASE) as * mut _;
+        let ptr = unsafe { Unique::new_unchecked(ptr) };
         VGA.call_once(|| Mutex::new(Vga::new(ptr)))
     }
 
@@ -350,6 +346,9 @@ pub mod kernel {
     }
 
     pub unsafe fn init_gdt() {
+        static GDTR: Once<Gdtr> = Once::new();
+        static GDT: Once<Gdt> = Once::new();
+
         let gdt = GDT.call_once(|| {
             let len = 8;
             let ptr = (&ALLOCATOR).alloc(
@@ -400,6 +399,9 @@ pub mod kernel {
     }
 
     pub unsafe fn init_idt() {
+        static IDTR: Once<Idtr> = Once::new();
+        static IDT: Once<Idt> = Once::new();
+
         let idt = IDT.call_once(|| {
             let len = 256;
             let ptr = (&ALLOCATOR).alloc(
