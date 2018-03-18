@@ -21,6 +21,8 @@ pub unsafe extern "C" fn _rust_start(
     kernel_start: usize,
     kernel_end: usize,
 ) -> ! {
+    assert_has_not_been_called!("_rust_start can only be called from boot code @ _start");
+
     // align up
     let page_addr = (kernel_end + 0xfff) & 0xfffff000;
     let page_table = kernel::init_paging(page_addr - kernel::KERNEL_BASE);
@@ -217,6 +219,8 @@ pub mod kernel {
     static PAGE_TABLE: Once<Mutex<ActiveTable<'static>>> = Once::new();
 
     pub unsafe fn init_paging(addr: usize) -> ActiveTable<'static> {
+        assert_has_not_been_called!("k::arch::kernel::init_paging can only be called from boot code @ _rust_start");
+
         let page_map = slice::from_raw_parts_mut(addr as *mut _, 1024);
 
         for entry in page_map.iter_mut() {
