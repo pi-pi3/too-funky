@@ -33,7 +33,3 @@ align 16, resb 0
 stack_bottom:
             resb    16384
 stack_end:
-
-global KERNEL_MAP_INNER
-align 4096, resb 0
-KERNEL_MAP_INNER    resd    1024

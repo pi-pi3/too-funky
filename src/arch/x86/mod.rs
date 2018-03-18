@@ -1,3 +1,5 @@
+use core::mem;
+
 use multiboot2;
 use x86::shared::irq;
 
@@ -11,7 +13,7 @@ pub mod segmentation;
 use drivers::keyboard::{self, Scanset};
 use mem::frame::{FRAME_SIZE, Allocator as FrameAllocator};
 use mem::page::Allocator as PageAllocator;
-use arch::paging::table::ActiveTable;
+use arch::paging::table::{self, ActiveTable};
 
 #[no_mangle]
 pub unsafe extern "C" fn _rust_start(
@@ -19,16 +21,20 @@ pub unsafe extern "C" fn _rust_start(
     kernel_start: usize,
     kernel_end: usize,
 ) -> ! {
-    let page_table = kernel::init_paging();
+    // align up
+    let page_addr = (kernel_end + 0xfff) & 0xfffff000;
+    let page_table = kernel::init_paging(page_addr - kernel::KERNEL_BASE);
 
-    kinit(page_table, mb2_addr, kernel_start, kernel_end);
+    kinit(
+        page_table,
+        mb2_addr,
+        kernel_start,
+        page_addr + 1024 * mem::size_of::<table::Entry>(),
+    );
     kmain();
 
     loop {}
 }
-
-use spin::Once;
-static KINIT: Once<()> = Once::new();
 
 pub fn kinit(
     page_table: ActiveTable<'static>,
@@ -36,6 +42,9 @@ pub fn kinit(
     _kernel_start: usize,
     kernel_end: usize,
 ) {
+    use spin::Once;
+    static KINIT: Once<()> = Once::new();
+
     KINIT.call_once(|| {
         let mb2 = unsafe { multiboot2::load(mb2_addr) };
 
@@ -100,7 +109,12 @@ pub fn kinit(
         kprint!("kernel heap... ");
         kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
-        kprintln!("heap size: {}kB", (heap_end - heap_start) / 1024);
+        kprintln!(
+            "heap size: {:x}..{:x} == {}kB",
+            heap_start,
+            heap_end,
+            (heap_end - heap_start) / 1024
+        );
 
         kprint!("video graphics array driver... ");
         kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
@@ -157,7 +171,7 @@ pub mod kernel {
     use ::ALLOCATOR;
 
     use arch::paging::addr::*;
-    use arch::paging::table::{ActiveTable, InactiveTable};
+    use arch::paging::table::{self, ActiveTable, InactiveTable};
 
     use arch::segmentation::{lgdt, reload_segments};
     use arch::segmentation::gdt::{self, Gdt, Gdtr};
@@ -190,42 +204,24 @@ pub mod kernel {
     static PAGE_ALLOC: Once<Mutex<PageAllocator>> = Once::new();
     static PAGE_TABLE: Once<Mutex<ActiveTable<'static>>> = Once::new();
 
-    // TODO: replace the static page table with a dynamically allocated one
-    mod page_tables {
-        use core::slice;
+    pub unsafe fn init_paging(addr: usize) -> ActiveTable<'static> {
+        let page_map = slice::from_raw_parts_mut(addr as *mut _, 1024);
 
-        use spin::Mutex;
-
-        use arch::kernel::KERNEL_BASE;
-        use arch::paging::table::Entry;
-
-        extern "C" {
-            #[no_mangle]
-            static mut KERNEL_MAP_INNER: [Entry; 1024];
+        for entry in page_map.iter_mut() {
+            *entry = table::Entry::empty()
         }
 
-        static mut KERNEL_MAP: Mutex<Option<*mut [Entry; 1024]>> =
-            unsafe { Mutex::new(Some(&mut KERNEL_MAP_INNER as *mut _)) };
-
-        pub fn take_ref() -> Option<&'static mut [Entry]> {
-            unsafe {
-                KERNEL_MAP.lock().take().map(|kmap| {
-                    let ptr = kmap as usize - KERNEL_BASE;
-                    slice::from_raw_parts_mut(ptr as *mut _, 1024)
-                })
-            }
-        }
-    }
-
-    pub unsafe fn init_paging() -> ActiveTable<'static> {
-        let page_map = page_tables::take_ref()
-            .expect("attempt to use the static page twice");
+        let size = addr + 1024 * mem::size_of::<table::Entry>();
         let mut page_map = InactiveTable::new(page_map);
 
         // first four megabytes identity
         page_map.default_map(Virtual::new(0), Physical::new(0));
         // first four megabytes higher half
         page_map.default_map(Virtual::new(KERNEL_BASE), Physical::new(0));
+        if (addr + size) & 0xffc00000 > 0 {
+            let page = (addr + size) & 0xffc00000;
+            page_map.default_map(Virtual::new(KERNEL_BASE + page), Physical::new(page));
+        }
 
         let mut page_map = page_map.load();
 
@@ -363,6 +359,11 @@ pub mod kernel {
                 )
             ).unwrap();
             let table = slice::from_raw_parts_mut(ptr as *mut _, len);
+
+            for entry in table.iter_mut() {
+                *entry = gdt::Entry::empty()
+            }
+
             let mut gdt = Gdt::with_table(table);
             gdt.new_entry(
                 0x8,
@@ -408,6 +409,11 @@ pub mod kernel {
                 )
             ).unwrap();
             let table = slice::from_raw_parts_mut(ptr as *mut _, len);
+
+            for entry in table.iter_mut() {
+                *entry = idt::Entry::empty()
+            }
+
             let mut idt = Idt::with_table(table);
 
             idt.new_exception_handler(0x0, exceptions::de);
