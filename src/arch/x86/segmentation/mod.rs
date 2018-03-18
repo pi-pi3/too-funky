@@ -1,6 +1,7 @@
 pub mod gdt;
 
-use x86::shared::segmentation::{set_cs, load_ds, load_es, load_fs, load_gs, load_ss, SegmentSelector};
+use x86::shared::segmentation::{load_ds, load_es, load_fs, load_gs, load_ss,
+                                set_cs, SegmentSelector};
 
 use self::gdt::Gdtr;
 

@@ -18,11 +18,11 @@ extern crate alloc;
 #[macro_use]
 extern crate bitflags;
 extern crate compiler_builtins;
+extern crate linked_list_allocator;
+extern crate multiboot2;
 extern crate rlibc;
 extern crate spin;
 extern crate x86;
-extern crate multiboot2;
-extern crate linked_list_allocator;
 
 #[macro_use]
 pub mod macros;

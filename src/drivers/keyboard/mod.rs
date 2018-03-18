@@ -1,4 +1,4 @@
-use spin::{Once, Mutex};
+use spin::{Mutex, Once};
 use x86::shared::irq;
 
 use arch::kernel;
@@ -30,11 +30,7 @@ interrupt_handlers! {
     }
 }
 
-pub fn init_keys(
-    delay: u8,
-    repeat: u16,
-    scanset: Scanset,
-) -> Result<(), ()> {
+pub fn init_keys(delay: u8, repeat: u16, scanset: Scanset) -> Result<(), ()> {
     let keyboard = KEYBOARD.call_once(move || {
         unsafe { Keyboard::new(delay, repeat, &mut KEYS, &mut INPUT, scanset) }
             .map(|keyboard| Mutex::new(keyboard))
@@ -44,54 +40,63 @@ pub fn init_keys(
 }
 
 fn try_keyboard() -> Option<&'static Mutex<Keyboard<'static>>> {
-    KEYBOARD.try()
-        .and_then(|keyboard| keyboard.as_ref())
+    KEYBOARD.try().and_then(|keyboard| keyboard.as_ref())
 }
 
 pub fn poll() -> Option<Keycode> {
-    try_keyboard().map(|keyboard| {
-        loop {
-            unsafe { irq::disable(); }
+    try_keyboard().map(|keyboard| loop {
+        unsafe {
+            irq::disable();
+        }
 
-            let result = {
-                let mut key = keyboard.lock();
-                key.last()
-            };
+        let result = {
+            let mut key = keyboard.lock();
+            key.last()
+        };
 
-            unsafe { irq::enable(); }
+        unsafe {
+            irq::enable();
+        }
 
-            if result.is_some() {
-                break result.unwrap();
-            }
+        if result.is_some() {
+            break result.unwrap();
         }
     })
 }
 
 pub fn modifiers() -> Option<Mod> {
     try_keyboard().map(|keyboard| {
-        unsafe { irq::disable(); }
-    
+        unsafe {
+            irq::disable();
+        }
+
         let result = {
             let key = keyboard.lock();
             key.modifiers()
         };
-    
-        unsafe { irq::enable(); }
-    
+
+        unsafe {
+            irq::enable();
+        }
+
         result
     })
 }
 
 pub fn is_pressed(keycode: Keycode) -> Option<bool> {
     try_keyboard().map(|keyboard| {
-        unsafe { irq::disable(); }
+        unsafe {
+            irq::disable();
+        }
 
         let result = {
             let key = keyboard.lock();
             key.is_pressed(keycode)
         };
 
-        unsafe { irq::enable(); }
+        unsafe {
+            irq::enable();
+        }
 
         result
     })

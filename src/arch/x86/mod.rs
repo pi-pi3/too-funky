@@ -11,7 +11,7 @@ pub mod paging;
 pub mod segmentation;
 
 use drivers::keyboard::{self, Scanset};
-use mem::frame::{FRAME_SIZE, Allocator as FrameAllocator};
+use mem::frame::{Allocator as FrameAllocator, FRAME_SIZE};
 use mem::page::Allocator as PageAllocator;
 use arch::paging::table::{self, ActiveTable};
 
@@ -90,7 +90,9 @@ pub fn kinit(
         let heap_start = kernel::KERNEL_BASE + mem_min;
         let heap_end = heap_start + 2 * FRAME_SIZE;
 
-        unsafe { kernel::init_heap(heap_start, heap_end); }
+        unsafe {
+            kernel::init_heap(heap_start, heap_end);
+        }
 
         kernel::init_vga();
 
@@ -120,11 +122,15 @@ pub fn kinit(
         kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprint!("global descriptor table... ");
-        unsafe { kernel::init_gdt(); }
+        unsafe {
+            kernel::init_gdt();
+        }
         kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprint!("interrupt descriptor table... ");
-        unsafe { kernel::init_idt(); }
+        unsafe {
+            kernel::init_idt();
+        }
         kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
         kprint!("keyboard driver... ");
@@ -137,7 +143,11 @@ pub fn kinit(
                 )
             })
             .map_err(|_| {
-                kprintln!("{red}[ERR]{reset}", red = "\x1b[31m", reset = "\x1b[0m")
+                kprintln!(
+                    "{red}[ERR]{reset}",
+                    red = "\x1b[31m",
+                    reset = "\x1b[0m"
+                )
             });
 
         {
@@ -149,12 +159,17 @@ pub fn kinit(
 
             pic.0.clear_mask(1);
 
-            kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+            kprintln!(
+                "{green}[OK]{reset}",
+                green = "\x1b[32m",
+                reset = "\x1b[0m"
+            );
         }
 
-
         kprintln!("enabling hardware interrupts...");
-        unsafe { irq::enable(); }
+        unsafe {
+            irq::enable();
+        }
         kprintln!("you're on your own now...");
     });
 }
@@ -166,11 +181,13 @@ pub mod kernel {
 
     use alloc::allocator::{Alloc, Layout};
 
-    use spin::{Once, Mutex, MutexGuard};
+    use spin::{Mutex, MutexGuard, Once};
 
-    use x86::shared::control_regs::{cr0, cr0_write, CR0_ENABLE_PAGING, CR0_WRITE_PROTECT, cr4, cr4_write, CR4_ENABLE_PSE};
+    use x86::shared::control_regs::{CR0_ENABLE_PAGING, CR0_WRITE_PROTECT,
+                                    CR4_ENABLE_PSE, cr0, cr0_write, cr4,
+                                    cr4_write};
 
-    use ::ALLOCATOR;
+    use ALLOCATOR;
 
     use arch::paging::addr::*;
     use arch::paging::table::{self, ActiveTable, InactiveTable};
@@ -182,10 +199,10 @@ pub mod kernel {
     use arch::interrupt::idt::{self, Idt, Idtr};
 
     use mem::frame::Allocator as FrameAllocator;
-    use mem::page::{PAGE_SIZE, Allocator as PageAllocator};
+    use mem::page::{Allocator as PageAllocator, PAGE_SIZE};
 
     use drivers::vga::Vga;
-    use drivers::pic::{Mode as PicMode, Port as PicPort, Pic};
+    use drivers::pic::{Mode as PicMode, Pic, Port as PicPort};
     use drivers::keyboard;
 
     const VGA_BASE: usize = 0xb8000;
@@ -215,7 +232,10 @@ pub mod kernel {
         page_map.default_map(Virtual::new(KERNEL_BASE), Physical::new(0));
         if (addr + size) & 0xffc00000 > 0 {
             let page = (addr + size) & 0xffc00000;
-            page_map.default_map(Virtual::new(KERNEL_BASE + page), Physical::new(page));
+            page_map.default_map(
+                Virtual::new(KERNEL_BASE + page),
+                Physical::new(page),
+            );
         }
 
         let mut page_map = page_map.load();
@@ -263,7 +283,8 @@ pub mod kernel {
         PAGE_TABLE.try().unwrap().lock()
     }
 
-    pub fn try_page_table() -> Option<MutexGuard<'static, ActiveTable<'static>>> {
+    pub fn try_page_table() -> Option<MutexGuard<'static, ActiveTable<'static>>>
+    {
         PAGE_TABLE.try().and_then(|table| table.try_lock())
     }
 
@@ -300,7 +321,7 @@ pub mod kernel {
             let mut frame_alloc = frame_alloc();
 
             let pages = heap_size >> 22;
-            
+
             for i in 0..pages {
                 // these will never be freed anyway
                 let page = page_alloc.allocate_at(Virtual::new(heap_start));
@@ -326,7 +347,7 @@ pub mod kernel {
     }
 
     pub fn init_vga<'a>() -> &'a Mutex<Vga> {
-        let ptr = (VGA_BASE + KERNEL_BASE) as * mut _;
+        let ptr = (VGA_BASE + KERNEL_BASE) as *mut _;
         let ptr = unsafe { Unique::new_unchecked(ptr) };
         VGA.call_once(|| Mutex::new(Vga::new(ptr)))
     }
@@ -345,12 +366,12 @@ pub mod kernel {
 
         let gdt = GDT.call_once(|| {
             let len = 8;
-            let ptr = (&ALLOCATOR).alloc(
-                Layout::from_size_align_unchecked(
+            let ptr = (&ALLOCATOR)
+                .alloc(Layout::from_size_align_unchecked(
                     len * mem::size_of::<gdt::Entry>(),
                     mem::size_of::<gdt::Entry>(),
-                )
-            ).unwrap();
+                ))
+                .unwrap();
             let table = slice::from_raw_parts_mut(ptr as *mut _, len);
 
             for entry in table.iter_mut() {
@@ -398,12 +419,12 @@ pub mod kernel {
 
         let idt = IDT.call_once(|| {
             let len = 256;
-            let ptr = (&ALLOCATOR).alloc(
-                Layout::from_size_align_unchecked(
+            let ptr = (&ALLOCATOR)
+                .alloc(Layout::from_size_align_unchecked(
                     len * mem::size_of::<idt::Entry>(),
                     mem::size_of::<idt::Entry>(),
-                )
-            ).unwrap();
+                ))
+                .unwrap();
             let table = slice::from_raw_parts_mut(ptr as *mut _, len);
 
             for entry in table.iter_mut() {
@@ -473,7 +494,9 @@ pub mod kernel {
     }
 
     pub fn pic() -> MutexGuard<'static, (Pic, Pic)> {
-        unsafe { init_pic(Pic::new(PicPort::Pic1), Pic::new(PicPort::Pic2)).lock() }
+        unsafe {
+            init_pic(Pic::new(PicPort::Pic1), Pic::new(PicPort::Pic2)).lock()
+        }
     }
 
     pub fn try_pic() -> Option<MutexGuard<'static, (Pic, Pic)>> {

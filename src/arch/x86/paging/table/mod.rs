@@ -152,7 +152,10 @@ impl<'a> InactiveTable<'a> {
 
         cr3_write(phys.into_inner());
 
-        let inner = Table::new(slice::from_raw_parts_mut((0xffc00000 + offset) as *mut _, 1024));
+        let inner = Table::new(slice::from_raw_parts_mut(
+            (0xffc00000 + offset) as *mut _,
+            1024,
+        ));
         ActiveTable { inner }
     }
 
@@ -182,11 +185,17 @@ impl<'a> InactiveTable<'a> {
         let new_active = unsafe {
             cr3_write(new_phys.into_inner());
 
-            let inner = Table::new(slice::from_raw_parts_mut((0xffc00000 + new_offset) as *mut _, 1024));
+            let inner = Table::new(slice::from_raw_parts_mut(
+                (0xffc00000 + new_offset) as *mut _,
+                1024,
+            ));
             ActiveTable { inner }
         };
         let new_inactive = unsafe {
-            let inner = Table::new(slice::from_raw_parts_mut((addr.into_inner() + old_offset) as *mut _, 1024));
+            let inner = Table::new(slice::from_raw_parts_mut(
+                (addr.into_inner() + old_offset) as *mut _,
+                1024,
+            ));
             InactiveTable { inner }
         };
         (new_active, new_inactive)
