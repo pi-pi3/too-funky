@@ -21,7 +21,9 @@ pub unsafe extern "C" fn _rust_start(
     kernel_start: usize,
     kernel_end: usize,
 ) -> ! {
-    assert_has_not_been_called!("_rust_start can only be called from boot code @ _start");
+    assert_has_not_been_called!(
+        "_rust_start can only be called from boot code @ _start"
+    );
 
     // align up
     let page_addr = (kernel_end + 0xfff) & 0xfffff000;
@@ -204,7 +206,7 @@ pub mod kernel {
     use mem::page::{Allocator as PageAllocator, PAGE_SIZE};
 
     use drivers::vga::Vga;
-    use drivers::pic::{Mode as PicMode, Pic, PIC1, PIC2};
+    use drivers::pic::{Mode as PicMode, PIC1, PIC2, Pic};
     use drivers::keyboard;
 
     const VGA_BASE: usize = 0xb8000;
@@ -498,9 +500,7 @@ pub mod kernel {
     }
 
     pub fn pic() -> MutexGuard<'static, (Pic, Pic)> {
-        unsafe {
-            init_pic(Pic::new(PIC1), Pic::new(PIC2)).lock()
-        }
+        unsafe { init_pic(Pic::new(PIC1), Pic::new(PIC2)).lock() }
     }
 
     pub fn try_pic() -> Option<MutexGuard<'static, (Pic, Pic)>> {

@@ -20,39 +20,27 @@ impl Port {
     }
 
     pub fn read_byte(&mut self) -> u8 {
-        unsafe {
-            io::inb(self.portno.get())
-        }
+        unsafe { io::inb(self.portno.get()) }
     }
 
     pub fn write_byte(&mut self, byte: u8) {
-        unsafe {
-            io::outb(self.portno.get(), byte)
-        }
+        unsafe { io::outb(self.portno.get(), byte) }
     }
 
     pub fn read_word(&mut self) -> u16 {
-        unsafe {
-            io::inw(self.portno.get())
-        }
+        unsafe { io::inw(self.portno.get()) }
     }
 
     pub fn write_word(&mut self, word: u16) {
-        unsafe {
-            io::outw(self.portno.get(), word)
-        }
+        unsafe { io::outw(self.portno.get(), word) }
     }
 
     pub fn read_dword(&mut self) -> u32 {
-        unsafe {
-            io::inl(self.portno.get())
-        }
+        unsafe { io::inl(self.portno.get()) }
     }
 
     pub fn write_dword(&mut self, dword: u32) {
-        unsafe {
-            io::outl(self.portno.get(), dword)
-        }
+        unsafe { io::outl(self.portno.get(), dword) }
     }
 
     pub fn read(&mut self, buf: &mut [u8]) {

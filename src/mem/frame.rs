@@ -1,6 +1,6 @@
 use core::ops::Range;
 
-use bit_field::{BitField, BitArray};
+use bit_field::{BitArray, BitField};
 
 use arch::paging::addr::Physical;
 

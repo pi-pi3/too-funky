@@ -16,17 +16,17 @@
 #[allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
+extern crate bit_field;
 #[macro_use]
 extern crate bitflags;
-#[macro_use]
-extern crate once;
 extern crate compiler_builtins;
 extern crate linked_list_allocator;
 extern crate multiboot2;
+#[macro_use]
+extern crate once;
 extern crate rlibc;
 extern crate spin;
 extern crate x86;
-extern crate bit_field;
 
 #[macro_use]
 pub mod macros;

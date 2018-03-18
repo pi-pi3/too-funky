@@ -151,8 +151,8 @@ pub struct Vga {
     y: i16,
     x: i16,
     state: State,
-    port_a: Port, // 0x3d4
-    port_b: Port, // 0x3d5
+    port_a: Port,  // 0x3d4
+    port_b: Port,  // 0x3d5
     _port_c: Port, // 0x3e0
 }
 
