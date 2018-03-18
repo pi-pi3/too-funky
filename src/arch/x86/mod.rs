@@ -168,6 +168,8 @@ pub mod kernel {
 
     use spin::{Once, Mutex, MutexGuard};
 
+    use x86::shared::control_regs::{cr0, cr0_write, CR0_ENABLE_PAGING, CR0_WRITE_PROTECT, cr4, cr4_write, CR4_ENABLE_PSE};
+
     use ::ALLOCATOR;
 
     use arch::paging::addr::*;
@@ -218,20 +220,12 @@ pub mod kernel {
 
         let mut page_map = page_map.load();
 
-        // enable pse
-        // enable paging and write protect
+        cr4_write(cr4() | CR4_ENABLE_PSE);
+        cr0_write(cr0() | CR0_ENABLE_PAGING | CR0_WRITE_PROTECT);
         // add KERNEL_BASE to stack pointer
         // add KERNEL_BASE to base pointer
         // walk the call stack and add KERNEL_BASE to every saved ebp and eip
         asm!("
-                movl    %cr4, %eax
-                orl     $$0x10, %eax
-                movl    %eax, %cr4
-
-                movl    %cr0, %eax
-                orl     $$0x80010000, %eax
-                movl    %eax, %cr0
-
                 leal    init_paging.higher_half, %eax
                 jmpl    *%eax
         init_paging.higher_half:

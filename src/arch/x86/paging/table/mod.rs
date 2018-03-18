@@ -1,6 +1,8 @@
 use core::slice;
 use core::ops::{Deref, DerefMut};
 
+use x86::shared::control_regs::{cr3, cr3_write};
+
 use arch::paging::addr::*;
 use mem::frame::FRAME_SIZE;
 
@@ -12,12 +14,7 @@ struct Table<'a> {
 }
 
 impl<'a> Table<'a> {
-    pub fn new(inner: &'a mut [Entry]) -> Table<'a> {
-        assert!(
-            inner.len() == 1024,
-            "page directory must have 1024 entries, is {}",
-            inner.len()
-        );
+    pub unsafe fn new(inner: &'a mut [Entry]) -> Table<'a> {
         Table { inner }
     }
 
@@ -57,7 +54,7 @@ impl<'a> Table<'a> {
     }
 
     pub unsafe fn reset_cache(&mut self) {
-        asm!("mov %cr3, %eax; mov %eax, %cr3" : : : "eax" : "volatile");
+        cr3_write(cr3());
     }
 }
 
@@ -113,8 +110,13 @@ pub struct InactiveTable<'a> {
 
 impl<'a> InactiveTable<'a> {
     pub fn new(inner: &'a mut [Entry]) -> InactiveTable<'a> {
+        assert!(
+            inner.len() == 1024,
+            "page directory must have 1024 entries, is {}",
+            inner.len()
+        );
         InactiveTable {
-            inner: Table::new(inner),
+            inner: unsafe { Table::new(inner) },
         }
     }
 
@@ -148,14 +150,10 @@ impl<'a> InactiveTable<'a> {
         let offset = phys.into_inner() & (FRAME_SIZE - 1);
         self.default_map(Virtual::new(0xffc00000), phys & !(FRAME_SIZE - 1));
 
-        asm!("mov $0, %cr3" : : "r"(phys) : : "volatile");
+        cr3_write(phys.into_inner());
 
-        ActiveTable {
-            inner: Table::new(slice::from_raw_parts_mut(
-                (0xffc00000 + offset) as *mut _,
-                1024,
-            )),
-        }
+        let inner = Table::new(slice::from_raw_parts_mut((0xffc00000 + offset) as *mut _, 1024));
+        ActiveTable { inner }
     }
 
     // addr is the virtual address to which the current active table will be
@@ -182,22 +180,14 @@ impl<'a> InactiveTable<'a> {
         self.default_map(addr, old_phys & !(FRAME_SIZE - 1));
 
         let new_active = unsafe {
-            asm!("mov $0, %cr3" : : "r"(new_phys) : : "volatile");
+            cr3_write(new_phys.into_inner());
 
-            ActiveTable {
-                inner: Table::new(slice::from_raw_parts_mut(
-                    (0xffc00000 + new_offset) as *mut _,
-                    1024,
-                )),
-            }
+            let inner = Table::new(slice::from_raw_parts_mut((0xffc00000 + new_offset) as *mut _, 1024));
+            ActiveTable { inner }
         };
         let new_inactive = unsafe {
-            InactiveTable {
-                inner: Table::new(slice::from_raw_parts_mut(
-                    (addr.into_inner() + old_offset) as *mut _,
-                    1024,
-                )),
-            }
+            let inner = Table::new(slice::from_raw_parts_mut((addr.into_inner() + old_offset) as *mut _, 1024));
+            InactiveTable { inner }
         };
         (new_active, new_inactive)
     }
