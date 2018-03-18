@@ -18,7 +18,7 @@ static KEYBOARD: Once<Option<Mutex<Keyboard<'static>>>> = Once::new();
 
 interrupt_handlers! {
     pub unsafe extern fn handler() {
-        let key = Scancode::poll(0x60);
+        let key = Scancode::poll();
 
         try_keyboard()
             .and_then(|keyboard| keyboard.try_lock())

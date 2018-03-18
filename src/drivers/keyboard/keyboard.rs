@@ -1,4 +1,4 @@
-use x86::shared::io;
+use port::Port;
 
 use super::*;
 
@@ -152,7 +152,7 @@ impl Response {
 }
 
 pub struct Keyboard<'a> {
-    port: u16,
+    port: Port,
     set: Scanset,
     led: Led,
     repeat: u8,
@@ -172,7 +172,7 @@ impl<'a> Keyboard<'a> {
         set: Scanset,
     ) -> Option<Keyboard<'a>> {
         let mut key = Keyboard {
-            port: PORT,
+            port: unsafe { Port::new(PORT) },
             set,
             led: Led::default(),
             repeat,
@@ -231,8 +231,8 @@ impl<'a> Keyboard<'a> {
     }
 
     fn send(&mut self, com: Command) -> Result<Response, Option<Response>> {
-        unsafe fn inner(
-            port: u16,
+        fn inner(
+            port: &mut Port,
             com: Command,
             attempt: usize,
         ) -> Result<Response, Option<Response>> {
@@ -240,11 +240,10 @@ impl<'a> Keyboard<'a> {
                 return Err(None);
             }
 
-            //while io::inb(port)
             let (com, arg) = com.into_bytes();
-            io::outb(port, com);
-            arg.map(|arg| io::outb(port, arg));
-            let resp = Response::from_byte(io::inb(port));
+            port.write_byte(com);
+            arg.map(|arg| port.write_byte(arg));
+            let resp = Response::from_byte(port.read_byte());
             match resp {
                 Some(resp @ Response::Ack) => Ok(resp),
                 Some(resp @ Response::Resend) => Ok(resp),
@@ -260,7 +259,7 @@ impl<'a> Keyboard<'a> {
 
         let mut attempt = 1;
         loop {
-            match unsafe { inner(self.port, com, attempt) } {
+            match inner(&mut self.port, com, attempt) {
                 Ok(Response::Resend) => attempt += 1,
                 resp => break resp,
             }

@@ -10,6 +10,7 @@
 #![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(ptr_internals)]
+#![feature(nonzero)]
 #![no_std]
 
 #[allow(unused_imports)]
@@ -32,6 +33,7 @@ pub mod macros;
 pub mod arch;
 pub mod panic;
 pub mod mem;
+pub mod port;
 pub mod drivers;
 pub mod syscall;
 

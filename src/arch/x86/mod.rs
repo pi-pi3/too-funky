@@ -202,7 +202,7 @@ pub mod kernel {
     use mem::page::{Allocator as PageAllocator, PAGE_SIZE};
 
     use drivers::vga::Vga;
-    use drivers::pic::{Mode as PicMode, Pic, Port as PicPort};
+    use drivers::pic::{Mode as PicMode, Pic, PIC1, PIC2};
     use drivers::keyboard;
 
     const VGA_BASE: usize = 0xb8000;
@@ -495,7 +495,7 @@ pub mod kernel {
 
     pub fn pic() -> MutexGuard<'static, (Pic, Pic)> {
         unsafe {
-            init_pic(Pic::new(PicPort::Pic1), Pic::new(PicPort::Pic2)).lock()
+            init_pic(Pic::new(PIC1), Pic::new(PIC2)).lock()
         }
     }
 

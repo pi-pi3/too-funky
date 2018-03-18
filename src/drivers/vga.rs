@@ -2,32 +2,11 @@ use core::ptr::Unique;
 use core::cmp::Ordering;
 use core::fmt::{self, Write};
 
-use x86::shared::io;
+use port::Port;
 
 const WIDTH: usize = 80;
 const HEIGHT: usize = 25;
 const SIZE: usize = WIDTH * HEIGHT;
-
-#[derive(Debug, PartialEq, Eq, Hash)]
-enum Port {
-    X3d4,
-}
-
-impl Port {
-    pub fn into_portno(&self) -> u16 {
-        match *self {
-            Port::X3d4 => 0x3d4,
-        }
-    }
-
-    pub fn write(&mut self, index: u8, data: u8) {
-        let port = self.into_portno();
-        unsafe {
-            io::outb(port, index);
-            io::outb(port + 1, data);
-        }
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Color {
@@ -172,17 +151,29 @@ pub struct Vga {
     y: i16,
     x: i16,
     state: State,
+    port_a: Port, // 0x3d4
+    port_b: Port, // 0x3d5
+    _port_c: Port, // 0x3e0
 }
 
 impl Vga {
     pub fn new(ptr: Unique<u16>) -> Vga {
+        let port = unsafe { Port::new(0x3d4) };
+        let (mut port_a, mut port_b) = unsafe { port.into_siblings() };
+        let mut port_c = unsafe { Port::new(0x3e0) };
+
         // enable cursor
         // copied from osdev
-        Port::X3d4.write(0x0a, unsafe { io::inb(0x3d5) & 0xc0 });
-        Port::X3d4.write(0x0b, unsafe { (io::inb(0x3e0) & 0xe0) | 15 });
+        port_a.write_byte(0x0a);
+        let byte = port_b.read_byte();
+        port_b.write_byte(byte & 0xc0);
+        port_a.write_byte(0x0b);
+        port_b.write_byte((port_c.read_byte() & 0xe0) | 15);
 
-        Port::X3d4.write(0x0f, 0);
-        Port::X3d4.write(0x0e, 0);
+        port_a.write_byte(0x0f);
+        port_b.write_byte(0);
+        port_a.write_byte(0x0e);
+        port_b.write_byte(0);
 
         let color = (Shade::default_bg(), Shade::default_fg());
         let mut vga = Vga {
@@ -191,6 +182,9 @@ impl Vga {
             y: 0,
             x: 0,
             state: State::Default,
+            port_a,
+            port_b,
+            _port_c: port_c,
         };
         vga.cls();
         vga
@@ -418,8 +412,10 @@ impl Vga {
         let offset = self.offset() as u16;
         let hi = (offset >> 8) as u8;
         let lo = (offset & 0xff) as u8;
-        Port::X3d4.write(0x0f, lo);
-        Port::X3d4.write(0x0e, hi);
+        self.port_a.write_byte(0x0f);
+        self.port_b.write_byte(lo);
+        self.port_a.write_byte(0x0e);
+        self.port_b.write_byte(hi);
     }
 }
 

@@ -1,4 +1,4 @@
-use x86::shared::io;
+use port::Port;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Scancode {
@@ -36,15 +36,17 @@ impl Scancode {
         }
     }
 
-    pub unsafe fn poll(port: u16) -> Scancode {
-        let mut byte = io::inb(port);
+    pub unsafe fn poll() -> Scancode {
+        static mut PORT: Port = unsafe { Port::new(0x60) };
+
+        let mut byte = PORT.read_byte();
         while byte == 0 {
-            byte = io::inb(port)
+            byte = PORT.read_byte();
         }
 
         match byte {
-            0xe0 => Scancode::poll_long(port),
-            0xe1 => Scancode::poll_very_long(port),
+            0xe0 => Scancode::poll_long(&mut PORT),
+            0xe1 => Scancode::poll_very_long(&mut PORT),
             byte if byte < 0x80 => {
                 Scancode::Pressed([byte, 0, 0, 0, 0, 0, 0, 0])
             }
@@ -52,17 +54,17 @@ impl Scancode {
         }
     }
 
-    unsafe fn poll_long(port: u16) -> Scancode {
-        match io::inb(port) {
+    unsafe fn poll_long(port: &mut Port) -> Scancode {
+        match port.read_byte() {
             0x2a => {
-                if io::inb(port) == 0xe0 && io::inb(port) == 0x37 {
+                if port.read_byte() == 0xe0 && port.read_byte() == 0x37 {
                     Scancode::Pressed([0xe0, 0x2a, 0xe0, 0x37, 0, 0, 0, 0])
                 } else {
                     Scancode::Invalid
                 }
             }
             0xb7 => {
-                if io::inb(port) == 0xe0 && io::inb(port) == 0xaa {
+                if port.read_byte() == 0xe0 && port.read_byte() == 0xaa {
                     Scancode::Pressed([0xe0, 0xb7, 0xe0, 0xaa, 0, 0, 0, 0])
                 } else {
                     Scancode::Invalid
@@ -75,10 +77,10 @@ impl Scancode {
         }
     }
 
-    unsafe fn poll_very_long(port: u16) -> Scancode {
-        if io::inb(port) == 0x1d && io::inb(port) == 0x45
-            && io::inb(port) == 0xe1 && io::inb(port) == 0x9d
-            && io::inb(port) == 0xc5
+    unsafe fn poll_very_long(port: &mut Port) -> Scancode {
+        if port.read_byte() == 0x1d && port.read_byte() == 0x45
+            && port.read_byte() == 0xe1 && port.read_byte() == 0x9d
+            && port.read_byte() == 0xc5
         {
             Scancode::Pressed([0xe1, 0x1d, 0x45, 0xe1, 0x9d, 0xc5, 0, 0])
         } else {
