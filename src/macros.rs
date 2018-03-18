@@ -3,7 +3,9 @@ use arch::kernel;
 
 #[macro_export]
 macro_rules! kprintln {
-    () => {};
+    () => {
+        kprint!("\n")
+    };
     ($fmt:expr) => {
         kprint!(concat!($fmt, "\n"))
     };
