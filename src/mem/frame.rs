@@ -1,5 +1,7 @@
 use core::ops::Range;
 
+use bit_field::{BitField, BitArray};
+
 use arch::paging::addr::Physical;
 
 #[cfg(target_pointer_width = "32")]
@@ -53,16 +55,9 @@ pub struct Allocator {
 impl Allocator {
     pub fn with_range(range: Range<usize>) -> Allocator {
         let mut bitmap = [0xffffffff_usize; LEN];
-        let mut idx = range.start >> 27;
-        let bit = (range.start >> 22) & 0x31;
-        let mut bit = 1_usize << bit;
 
-        for _ in frames(range.clone()) {
-            bitmap[idx] &= !bit;
-            bit = bit.rotate_left(1);
-            if bit == 1 {
-                idx += 1;
-            }
+        for (idx, _) in frames(range.clone()).enumerate() {
+            bitmap.set_bit(idx, false);
         }
 
         let range = (range.start >> 27)..(range.end >> 27) + 1;
@@ -71,13 +66,13 @@ impl Allocator {
 
     pub fn allocate(&mut self) -> Option<Frame> {
         for idx in self.range.clone() {
-            if self.bitmap[idx] != usize::max_value() {
+            if self.bitmap[idx] != !0 {
                 let word = self.bitmap[idx];
                 for bit in 0..USIZE_BITS {
-                    let mask = 1 << bit;
-                    if word & mask == 0 {
-                        self.bitmap[idx] |= mask;
-                        let addr = idx << 27 | bit << 22;
+                    if !word.get_bit(bit) {
+                        let frame = idx << 5 | bit;
+                        self.bitmap.set_bit(frame, true);
+                        let addr = frame << 22;
                         let frame = Frame {
                             addr: Physical::new(addr),
                         };
@@ -92,10 +87,7 @@ impl Allocator {
 
     pub fn deallocate(&mut self, frame: Frame) {
         let idx = frame.addr.into_inner() >> 22;
-        let bit = (idx >> 22) & 31;
-        let idx = (idx >> 27) & 31;
-        let mask = 1 << bit;
-        self.bitmap[idx] &= !mask;
+        self.bitmap.set_bit(idx, false);
     }
 
     // returns the count of free frames

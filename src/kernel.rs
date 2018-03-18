@@ -26,6 +26,7 @@ extern crate multiboot2;
 extern crate rlibc;
 extern crate spin;
 extern crate x86;
+extern crate bit_field;
 
 #[macro_use]
 pub mod macros;

@@ -1,5 +1,7 @@
 use core::ops::Range;
 
+use bit_field::{BitField, BitArray};
+
 use arch::paging::addr::Virtual;
 use arch::paging::table::ActiveTable;
 
@@ -53,16 +55,10 @@ pub struct Allocator {
 impl Allocator {
     pub fn with_used<'a>(active: &'a ActiveTable<'a>) -> Allocator {
         let mut bitmap = [0_usize; LEN];
-        let mut idx = 0;
-        let mut bit = 1_usize;
 
-        for page in pages(0..usize::max_value()) {
+        for (idx, page) in pages(0..usize::max_value()).enumerate() {
             if active.is_used(page) {
-                bitmap[idx] |= bit;
-            }
-            bit = bit.rotate_left(1);
-            if bit == 1 {
-                idx += 1;
+                bitmap.set_bit(idx, true);
             }
         }
 
@@ -75,14 +71,15 @@ impl Allocator {
 
     pub fn allocate_at(&mut self, virt: Virtual) -> Option<Page> {
         let idx = virt.into_inner() >> 27;
+
         for idx in idx..LEN {
-            if self.bitmap[idx] != usize::max_value() {
+            if self.bitmap[idx] != !0 {
                 let word = self.bitmap[idx];
                 for bit in 0..USIZE_BITS {
-                    let mask = 1 << bit;
-                    if word & mask == 0 {
-                        self.bitmap[idx] |= mask;
-                        let addr = idx << 27 | bit << 22;
+                    if !word.get_bit(bit) {
+                        let page = idx << 5 | bit;
+                        self.bitmap.set_bit(page, true);
+                        let addr = page << 22;
                         let page = Page {
                             addr: Virtual::new(addr),
                         };
@@ -97,10 +94,7 @@ impl Allocator {
 
     pub fn deallocate(&mut self, page: Page) {
         let idx = page.addr.into_inner() >> 22;
-        let bit = (idx >> 22) & 31;
-        let idx = (idx >> 27) & 31;
-        let mask = 1 << bit;
-        self.bitmap[idx] &= !mask;
+        self.bitmap.set_bit(idx, false);
     }
 
     // returns the count of free pages
