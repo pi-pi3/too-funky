@@ -4,11 +4,6 @@ version = "0.0.1"
 authors = ["Szymon Walter <walter.szymon.98@gmail.com>"]
 publish = false
 
-[lib]
-name = "k"
-path = "src/kernel.rs"
-crate-type = ['staticlib']
-
 [dependencies]
 rlibc = "1.0"
 x86 = "0.8"

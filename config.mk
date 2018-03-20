@@ -1,5 +1,4 @@
 
-IMAGE:=funky.img
 ARCH?=x86
 OS:=funky
 
@@ -57,7 +56,7 @@ CARGO_FLAGS+=
 QEMU_FLAGS+=-d int -no-reboot
 endif
 
-ifdef DRYRUN
+ifdef DRY
 RUN:=@echo
 else
 RUN:=
@@ -66,4 +65,4 @@ endif
 TARGET:=$(CPU)-unknown-$(OS)
 BUILD:=target/$(TARGET)/$(RELEASE)
 OBJDIR:=$(BUILD)/obj
-KERNEL:=$(BUILD)/kernel.bin
+KERNEL:=$(BUILD)/too-funky

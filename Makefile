@@ -1,13 +1,7 @@
 
 include config.mk
 
-ASM_SRC:=$(wildcard $(SRCDIR)/arch/$(ARCH)/boot/*.asm)
-RS_SRC:=$(shell find $(SRCDIR) -name '*.rs')
-
-SRC+=$(ASM_SRC) $(RS_SRC)
-OBJ+=$(patsubst $(SRCDIR)/arch/$(ARCH)/boot/%.asm,$(OBJDIR)/%.asm.o,$(ASM_SRC))
-LIBK:=$(BUILD)/libk.a
-LIB+=$(LIBK)
+SRC+=$(shell find $(SRCDIR) -name '*.rs')
 IMAGE:=funky.iso
 ISO:=isofiles
 
@@ -18,25 +12,16 @@ all: $(IMAGE)
 run: $(IMAGE)
 	$(RUN) $(QEMU) $(QEMU_FLAGS) -cdrom $(IMAGE)
 
-$(LIBK): $(RS_SRC) Cargo.toml
-	$(RUN) RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET) $(CARGO_FLAGS)
-
-$(IMAGE): $(BUILD) $(OBJDIR) $(ISO) $(GRUB) $(KERNEL)
-	$(RUN) cp grub.cfg $(ISO)/boot/grub/
-	$(RUN) cp $(KERNEL) $(ISO)/boot/
+$(IMAGE): $(BUILD) $(ISO) $(GRUB) $(KERNEL)
+	$(RUN) cp $(GRUB) $(ISO)/boot/grub/
+	$(RUN) cp $(KERNEL) $(ISO)/boot/kernel.bin
 	$(RUN) grub-mkrescue -o $(IMAGE) $(ISO)
 
-$(OBJDIR)/%.asm.o: $(SRCDIR)/arch/$(ARCH)/boot/%.asm
-	$(RUN) $(AS) $(ASFLAGS) $(INCLUDE) -o $@ $^
-
-$(KERNEL): $(LINKER) $(OBJ) $(LIB)
-	$(RUN) $(LD) $(LDFLAGS) -o $@ $(OBJ) $(LIB)
+$(KERNEL): $(SRC) $(LINKER) Cargo.toml $(TARGET).json
+	$(RUN) RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET) $(CARGO_FLAGS)
 
 $(BUILD):
 	$(RUN) mkdir -p $(BUILD)
-
-$(OBJDIR):
-	$(RUN) mkdir -p $(OBJDIR)
 
 $(ISO):
 	$(RUN) mkdir -p $(ISO)/boot/grub

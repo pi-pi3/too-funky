@@ -1,24 +1,21 @@
 {
 	"arch": "x86",
 	"cpu": "i686",
-	"data-layout": "e-m:e-i32:32-f80:128-n8:16:32-S128-p:32:32",
-	"executables": true,
-	"linker": "gcc",
-	"linker-flavor": "gcc",
 	"llvm-target": "i686-unknown-none",
-	"no-compiler-rt": true,
-	"os": "none",
+	"data-layout": "e-m:e-i32:32-f80:128-n8:16:32-S128-p:32:32",
 	"target-endian": "little",
 	"target-pointer-width": "32",
 	"target-c-int-width": "32",
 	"features": "-mmx,-fxsr,-sse,-sse2,+soft-float",
-	"pre-link-args": {
-		"gcc": [
-			"-Wl,--script=linker.ld",
-			"-Wl,--nmagic",
-			"-nostartfiles"
-		]
-	},
 	"eliminate-frame-pointer": false,
-    "panic-strategy": "abort"
+    "panic-strategy": "abort",
+	"executables": true,
+	"no-compiler-rt": true,
+	"os": "none",
+	"linker-flavor": "ld.lld",
+	"pre-link-args": {
+        "ld.lld": [
+            "--script=linker.ld"
+        ]
+    }
 }
