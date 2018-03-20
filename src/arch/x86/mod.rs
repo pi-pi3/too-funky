@@ -15,6 +15,56 @@ use mem::frame::{Allocator as FrameAllocator, FRAME_SIZE};
 use mem::page::Allocator as PageAllocator;
 use arch::paging::table::{self, ActiveTable};
 
+global_asm!(
+    r#"
+.set mb2_magic, 0xe85250d6
+.set header_length, header_end - header_start
+
+.macro HEADER arch, len
+.align  4
+.long   mb2_magic
+.long   \arch
+.long   \len
+.long   (0x100000000 - (mb2_magic + \arch + \len))
+.endm
+
+.macro END_TAG
+.align  8
+.word   0
+.word   0
+.long   0
+.endm
+
+.section .text.boot
+header_start:
+HEADER arch=0, len=header_length
+END_TAG
+header_end:
+
+.global _start
+_start:
+        cli
+        leal    stack_end-0xe0000000, %esp
+
+        movl    $0, %ebp
+        pushl   %ebp
+
+        addl    $0xe0000000, %ebx
+
+        pushl   $kernel_end
+        pushl   $kernel_start
+        pushl   %ebx
+
+        call    _rust_start
+
+.section .bss
+.align 16
+stack_start:
+.fill 16384, 1, 0
+stack_end:
+"#
+);
+
 #[no_mangle]
 pub unsafe extern "C" fn _rust_start(
     mb2_addr: usize,

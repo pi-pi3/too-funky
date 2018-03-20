@@ -3,6 +3,7 @@
 #![feature(compiler_builtins_lib)]
 #![feature(core_panic)]
 #![feature(asm)]
+#![feature(global_asm)]
 #![feature(naked_functions)]
 #![feature(core_intrinsics)]
 #![feature(fn_must_use)]

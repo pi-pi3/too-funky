@@ -5,12 +5,8 @@ SECTIONS {
 
     kernel_start = .;
 
-    .boot : AT(ADDR(.boot) - 0xe0000000) {
-        KEEP(*(.boot))
-        *(.boot.*)
-    }
-
     .text ALIGN(0x1000) : AT(ADDR(.text) - 0xe0000000) {
+        *(.text.boot.*)
         *(.text.*)
     }
 
