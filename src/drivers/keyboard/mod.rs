@@ -2,6 +2,7 @@ use spin::{Mutex, Once};
 use x86::shared::irq;
 
 use arch::kernel;
+use arch::interrupt::ExceptionStackFrame;
 
 mod keyboard;
 mod scancode;
@@ -16,18 +17,18 @@ static mut KEYS: [bool; 256] = [false; 256];
 static mut INPUT: [Keycode; 256] = [Keycode::Unknown; 256];
 static KEYBOARD: Once<Option<Mutex<Keyboard<'static>>>> = Once::new();
 
-interrupt_handlers! {
-    pub unsafe extern fn handler() {
-        let key = Scancode::poll();
+pub unsafe extern "x86-interrupt" fn handler(
+    _stack_frame: &ExceptionStackFrame,
+) {
+    let key = Scancode::poll();
 
-        try_keyboard()
-            .and_then(|keyboard| keyboard.try_lock())
-            .and_then(|mut keyboard| keyboard.input(key));
+    try_keyboard()
+        .and_then(|keyboard| keyboard.try_lock())
+        .and_then(|mut keyboard| keyboard.input(key));
 
-        let mut pic = kernel::try_pic().unwrap();
-        pic.0.eoi();
-        pic.1.eoi();
-    }
+    let mut pic = kernel::try_pic().unwrap();
+    pic.0.eoi();
+    pic.1.eoi();
 }
 
 pub fn init_keys(delay: u8, repeat: u16, scanset: Scanset) -> Result<(), ()> {

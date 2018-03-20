@@ -11,6 +11,7 @@
 #![feature(allocator_api)]
 #![feature(ptr_internals)]
 #![feature(nonzero)]
+#![feature(abi_x86_interrupt)]
 #![no_std]
 
 #[allow(unused_imports)]

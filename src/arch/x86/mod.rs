@@ -439,25 +439,25 @@ pub mod kernel {
 
             let mut idt = Idt::with_table(table);
 
-            idt.new_exception_handler(0x0, exceptions::de);
-            idt.new_exception_handler(0x1, exceptions::db);
-            idt.new_exception_handler(0x2, exceptions::ni);
-            idt.new_exception_handler(0x3, exceptions::bp);
-            idt.new_exception_handler(0x4, exceptions::of);
-            idt.new_exception_handler(0x5, exceptions::br);
-            idt.new_exception_handler(0x6, exceptions::ud);
-            idt.new_exception_handler(0x7, exceptions::nm);
+            idt.new_interrupt_handler(0x0, exceptions::de);
+            idt.new_interrupt_handler(0x1, exceptions::db);
+            idt.new_interrupt_handler(0x2, exceptions::ni);
+            idt.new_interrupt_handler(0x3, exceptions::bp);
+            idt.new_interrupt_handler(0x4, exceptions::of);
+            idt.new_interrupt_handler(0x5, exceptions::br);
+            idt.new_interrupt_handler(0x6, exceptions::ud);
+            idt.new_interrupt_handler(0x7, exceptions::nm);
             idt.new_exception_handler(0x8, exceptions::df);
             idt.new_exception_handler(0xa, exceptions::ts);
             idt.new_exception_handler(0xb, exceptions::np);
             idt.new_exception_handler(0xc, exceptions::ss);
             idt.new_exception_handler(0xd, exceptions::gp);
             idt.new_exception_handler(0xe, exceptions::pf);
-            idt.new_exception_handler(0x10, exceptions::mf);
+            idt.new_interrupt_handler(0x10, exceptions::mf);
             idt.new_exception_handler(0x11, exceptions::ac);
-            idt.new_exception_handler(0x12, exceptions::mc);
-            idt.new_exception_handler(0x13, exceptions::xm);
-            idt.new_exception_handler(0x14, exceptions::ve);
+            idt.new_interrupt_handler(0x12, exceptions::mc);
+            idt.new_interrupt_handler(0x13, exceptions::xm);
+            idt.new_interrupt_handler(0x14, exceptions::ve);
             idt.new_exception_handler(0x1e, exceptions::sx);
 
             idt.new_interrupt_handler(0x21, keyboard::handler);

@@ -49,11 +49,7 @@ impl<'a> Idt<'a> {
         self.new_handler(num, entry);
     }
 
-    pub fn new_exception_handler<E>(
-        &mut self,
-        num: u8,
-        isr: ExceptionHandler<E>,
-    ) {
+    pub fn new_exception_handler(&mut self, num: u8, isr: ExceptionHandler) {
         self.new_default_handler(num, isr as *const ());
     }
 
