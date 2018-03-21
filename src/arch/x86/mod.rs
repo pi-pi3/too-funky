@@ -146,85 +146,26 @@ pub fn kinit(
 
         unsafe {
             kernel::init_heap(heap_start, heap_end);
+            kernel::init_gdt();
+            kernel::init_idt();
         }
 
         kernel::init_vga();
 
-        kprint!("paging... ");
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-
-        kprint!("memory areas... ");
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-        kprintln!(
-            "available memory: {:x}..{:x} == {}MB",
-            mem_min,
-            mem_max + 1,
-            mem_size / (1024 * 1024)
-        );
-
-        kprint!("kernel heap... ");
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-
-        kprintln!(
-            "heap size: {:x}..{:x} == {}kB",
-            heap_start,
-            heap_end,
-            (heap_end - heap_start) / 1024
-        );
-
-        kprint!("video graphics array driver... ");
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-
-        kprint!("global descriptor table... ");
-        unsafe {
-            kernel::init_gdt();
-        }
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-
-        kprint!("interrupt descriptor table... ");
-        unsafe {
-            kernel::init_idt();
-        }
-        kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-
-        kprint!("keyboard driver... ");
         let _ = keyboard::init_keys(0, 250, Scanset::Set1)
-            .map(|_| {
-                kprintln!(
-                    "{green}[OK]{reset}",
-                    green = "\x1b[32m",
-                    reset = "\x1b[0m"
-                )
-            })
-            .map_err(|_| {
-                kprintln!(
-                    "{red}[ERR]{reset}",
-                    red = "\x1b[31m",
-                    reset = "\x1b[0m"
-                )
-            });
+            .unwrap_or_else(|_| panic!("couldn't initialize keyboard driver"));
 
         {
-            kprint!("programmable interrupt controller... ");
-
             let mut pic = kernel::pic();
             pic.0.set_all();
             pic.1.set_all();
 
             pic.0.clear_mask(1);
-
-            kprintln!(
-                "{green}[OK]{reset}",
-                green = "\x1b[32m",
-                reset = "\x1b[0m"
-            );
         }
 
-        kprintln!("enabling hardware interrupts...");
         unsafe {
             irq::enable();
         }
-        kprintln!("you're on your own now...");
     });
 }
 

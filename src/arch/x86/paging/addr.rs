@@ -68,7 +68,7 @@ impl PartialOrd<usize> for Virtual {
     }
 }
 
-macro_rules! impl_op {
+macro impl_op {
     ($type:ident, $op:ty, $fun:ident) => {
         impl $op for $type {
             type Output = $type;
@@ -77,7 +77,7 @@ macro_rules! impl_op {
                 $type :: new ( (self.0).$fun ( rhs.0 ) )
             }
         }
-    };
+    },
     ($type:ident, $rhs:ident, $op:ty, $fun:ident) => {
         impl $op for $type {
             type Output = $type;
