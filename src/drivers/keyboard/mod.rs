@@ -1,7 +1,7 @@
 use spin::{Mutex, Once};
 use x86::shared::irq;
 
-use arch::kernel;
+use drivers::pic;
 use arch::interrupt::ExceptionStackFrame;
 
 mod keyboard;
@@ -22,16 +22,16 @@ pub unsafe extern "x86-interrupt" fn handler(
 ) {
     let key = Scancode::poll();
 
-    try_keyboard()
+    try_handle()
         .and_then(|keyboard| keyboard.try_lock())
         .and_then(|mut keyboard| keyboard.input(key));
 
-    let mut pic = kernel::try_pic().unwrap();
+    let mut pic = pic::try_handle().unwrap();
     pic.0.eoi();
     pic.1.eoi();
 }
 
-pub fn init_keys(delay: u8, repeat: u16, scanset: Scanset) -> Result<(), ()> {
+pub fn init(delay: u8, repeat: u16, scanset: Scanset) -> Result<(), ()> {
     let keyboard = KEYBOARD.call_once(move || {
         unsafe { Keyboard::new(delay, repeat, &mut KEYS, &mut INPUT, scanset) }
             .map(|keyboard| Mutex::new(keyboard))
@@ -40,12 +40,12 @@ pub fn init_keys(delay: u8, repeat: u16, scanset: Scanset) -> Result<(), ()> {
     keyboard.as_ref().map(|_| ()).ok_or(())
 }
 
-fn try_keyboard() -> Option<&'static Mutex<Keyboard<'static>>> {
+fn try_handle() -> Option<&'static Mutex<Keyboard<'static>>> {
     KEYBOARD.try().and_then(|keyboard| keyboard.as_ref())
 }
 
 pub fn poll() -> Option<Keycode> {
-    try_keyboard().map(|keyboard| loop {
+    try_handle().map(|keyboard| loop {
         unsafe {
             irq::disable();
         }
@@ -66,7 +66,7 @@ pub fn poll() -> Option<Keycode> {
 }
 
 pub fn modifiers() -> Option<Mod> {
-    try_keyboard().map(|keyboard| {
+    try_handle().map(|keyboard| {
         unsafe {
             irq::disable();
         }
@@ -85,7 +85,7 @@ pub fn modifiers() -> Option<Mod> {
 }
 
 pub fn is_pressed(keycode: Keycode) -> Option<bool> {
-    try_keyboard().map(|keyboard| {
+    try_handle().map(|keyboard| {
         unsafe {
             irq::disable();
         }

@@ -1,5 +1,5 @@
-use core::fmt::{self, Write};
-use arch::kernel;
+use core::fmt::Write;
+use drivers::vga;
 
 pub macro kprintln {
     () => {
@@ -17,14 +17,14 @@ pub macro kprint {
     () => { },
     ($fmt: expr) => {
         {
-            let mut vga = kernel::vga();
+            let mut vga = vga::handle();
             let _ = vga.write_str($fmt); // always succeeds
         }
     },
     ($fmt: expr, $($args: tt)*) => {
         {
             let result = {
-                let mut vga = kernel::vga();
+                let mut vga = vga::handle();
                 write!(vga, $fmt, $($args)*)
             };
 

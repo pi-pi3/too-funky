@@ -10,7 +10,6 @@ pub mod interrupt;
 pub mod paging;
 pub mod segmentation;
 
-use drivers::keyboard::{self, Scanset};
 use mem::frame::{Allocator as FrameAllocator, FRAME_SIZE};
 use mem::page::Allocator as PageAllocator;
 use arch::paging::table::{self, ActiveTable};
@@ -172,19 +171,6 @@ fn kinit(
             kernel::init_idt();
         }
 
-        kernel::init_vga();
-
-        let _ = keyboard::init_keys(0, 250, Scanset::Set1)
-            .unwrap_or_else(|_| panic!("couldn't initialize keyboard driver"));
-
-        {
-            let mut pic = kernel::pic();
-            pic.0.set_all();
-            pic.1.set_all();
-
-            pic.0.clear_mask(1);
-        }
-
         kinfo = Some(Kinfo {
             kernel_start,
             kernel_end,
@@ -205,7 +191,6 @@ fn kinit(
 pub mod kernel {
     use core::mem;
     use core::slice;
-    use core::ptr::Unique;
 
     use alloc::allocator::{Alloc, Layout};
 
@@ -229,16 +214,7 @@ pub mod kernel {
     use mem::frame::Allocator as FrameAllocator;
     use mem::page::{Allocator as PageAllocator, PAGE_SIZE};
 
-    use drivers::vga::Vga;
-    use drivers::pic::{Mode as PicMode, PIC1, PIC2, Pic};
-    use drivers::keyboard;
-
-    const VGA_BASE: usize = 0xb8000;
     pub const KERNEL_BASE: usize = 0xe0000000;
-
-    static VGA: Once<Mutex<Vga>> = Once::new();
-
-    static PIC: Once<Mutex<(Pic, Pic)>> = Once::new();
 
     static FRAME_ALLOC: Once<Mutex<FrameAllocator>> = Once::new();
     static PAGE_ALLOC: Once<Mutex<PageAllocator>> = Once::new();
@@ -376,20 +352,6 @@ pub mod kernel {
         });
     }
 
-    pub fn init_vga<'a>() -> &'a Mutex<Vga> {
-        let ptr = (VGA_BASE + KERNEL_BASE) as *mut _;
-        let ptr = unsafe { Unique::new_unchecked(ptr) };
-        VGA.call_once(|| Mutex::new(Vga::new(ptr)))
-    }
-
-    pub fn vga() -> MutexGuard<'static, Vga> {
-        init_vga().lock()
-    }
-
-    pub fn try_vga() -> Option<MutexGuard<'static, Vga>> {
-        VGA.try().and_then(|vga| vga.try_lock())
-    }
-
     pub unsafe fn init_gdt() {
         static GDTR: Once<Gdtr> = Once::new();
         static GDT: Once<Gdt> = Once::new();
@@ -484,7 +446,7 @@ pub mod kernel {
             idt.new_interrupt_handler(0x14, exceptions::ve);
             idt.new_exception_handler(0x1e, exceptions::sx);
 
-            idt.new_interrupt_handler(0x21, keyboard::handler);
+            idt.new_interrupt_handler(0x21, ::drivers::keyboard::handler);
             idt.new_interrupt_handler(0x80, ::syscall::handler);
 
             idt
@@ -492,42 +454,5 @@ pub mod kernel {
 
         let idtr = IDTR.call_once(|| idt.idtr());
         lidt(idtr);
-    }
-
-    pub fn init_pic(master: Pic, slave: Pic) -> &'static Mutex<(Pic, Pic)> {
-        PIC.call_once(move || {
-            let master_mask = master.mask();
-            let slave_mask = slave.mask();
-
-            let mut master = master.begin_init();
-            let mut slave = slave.begin_init();
-
-            master.offset(0x20); // offset master irq's to 0x20:0x27
-            slave.offset(0x28); // offset slave irq's to 0x28:0x2f
-
-            master.slave(0b0100); // master has to know where its slave is,
-                                  // i.e. where it receives irq from the slave
-            slave.identity(0b0010); // slave has to know its cascade identity,
-                                    // i.e where it sends irqs to the master
-
-            master.mode(PicMode::M8086); // 8086/88 mode
-            slave.mode(PicMode::M8086); // 8086/88 mode
-
-            let mut master = master.end_init();
-            let mut slave = slave.end_init();
-
-            master.restore_mask(master_mask);
-            slave.restore_mask(slave_mask);
-
-            Mutex::new((master, slave))
-        })
-    }
-
-    pub fn pic() -> MutexGuard<'static, (Pic, Pic)> {
-        unsafe { init_pic(Pic::new(PIC1), Pic::new(PIC2)).lock() }
-    }
-
-    pub fn try_pic() -> Option<MutexGuard<'static, (Pic, Pic)>> {
-        PIC.try().and_then(|pic| pic.try_lock())
     }
 }

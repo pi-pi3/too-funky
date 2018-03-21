@@ -48,7 +48,9 @@ pub mod syscall;
 pub mod arch_x86;
 
 use arch::Kinfo;
-use drivers::keyboard::{self, Keycode};
+use drivers::vga;
+use drivers::pic;
+use drivers::keyboard::{self, Keycode, Scanset};
 use macros::*;
 
 // global_allocator doesn't work in modules
@@ -60,6 +62,12 @@ pub static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 pub fn kmain(kinfo: &Kinfo) {
     kprint!("paging... ");
+    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+
+    kprint!("global descriptor table... ");
+    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+
+    kprint!("interrupt descriptor table... ");
     kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
     kprint!("memory areas... ");
@@ -78,15 +86,16 @@ pub fn kmain(kinfo: &Kinfo) {
     );
 
     kprint!("video graphics array driver... ");
-    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
-    kprint!("global descriptor table... ");
-    kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
+    vga::init();
 
-    kprint!("interrupt descriptor table... ");
     kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
     kprint!("keyboard driver... ");
+
+    let _ = keyboard::init(0, 250, Scanset::Set1)
+        .unwrap_or_else(|_| panic!("couldn't initialize keyboard driver"));
+
     kprintln!(
         "{green}[OK]{reset}",
         green = "\x1b[32m",
@@ -94,6 +103,16 @@ pub fn kmain(kinfo: &Kinfo) {
     );
 
     kprint!("programmable interrupt controller... ");
+
+    {
+        pic::init();
+        let mut pic = pic::handle();
+        pic.0.set_all();
+        pic.1.set_all();
+
+        pic.0.clear_mask(1);
+    }
+
     kprintln!(
         "{green}[OK]{reset}",
         green = "\x1b[32m",

@@ -1,6 +1,6 @@
 use core::fmt::{self, Write};
 
-use arch::kernel;
+use drivers::vga;
 
 #[lang = "panic_fmt"]
 #[no_mangle]
@@ -10,7 +10,7 @@ pub extern "C" fn panic_fmt(
     line: u32,
     col: u32,
 ) -> ! {
-    kernel::try_vga().map(|mut vga| {
+    vga::try_handle().map(|mut vga| {
         let _ = vga.write_str("\x1b[0;31mkernel panicked at '");
         let _ = vga.write_fmt(msg);
         let _ = write!(vga, "', {}:{}:{}\x1b[0m", file, line, col);
