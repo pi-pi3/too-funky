@@ -34,9 +34,7 @@ extern crate x86;
 
 use x86::shared::irq;
 
-#[macro_use]
 pub mod macros;
-#[macro_use]
 #[cfg_attr(target_arch = "x86", path = "arch/x86/mod.rs")]
 pub mod arch;
 pub mod panic;
@@ -52,7 +50,6 @@ pub mod arch_x86;
 use arch::Kinfo;
 use drivers::vga;
 use drivers::pic;
-use drivers::keyboard::{self, Keycode, Scanset};
 use macros::*;
 
 // global_allocator doesn't work in modules
