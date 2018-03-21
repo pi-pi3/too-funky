@@ -1,7 +1,6 @@
 use core::mem;
 
 use multiboot2;
-use x86::shared::irq;
 
 use kmain;
 
@@ -179,10 +178,6 @@ fn kinit(
             free_memory: mem_size - (heap_end - heap_start),
             _priv: (),
         });
-
-        unsafe {
-            irq::enable();
-        }
     });
 
     kinfo
@@ -446,7 +441,6 @@ pub mod kernel {
             idt.new_interrupt_handler(0x14, exceptions::ve);
             idt.new_exception_handler(0x1e, exceptions::sx);
 
-            idt.new_interrupt_handler(0x21, ::drivers::keyboard::handler);
             idt.new_interrupt_handler(0x80, ::syscall::handler);
 
             idt

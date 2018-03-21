@@ -32,6 +32,8 @@ extern crate rlibc;
 extern crate spin;
 extern crate x86;
 
+use x86::shared::irq;
+
 #[macro_use]
 pub mod macros;
 #[macro_use]
@@ -92,13 +94,9 @@ pub fn kmain(kinfo: &Kinfo) {
     kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
     kprint!("keyboard driver... ");
-
-    let _ = keyboard::init(0, 250, Scanset::Set1)
-        .unwrap_or_else(|_| panic!("couldn't initialize keyboard driver"));
-
     kprintln!(
-        "{green}[OK]{reset}",
-        green = "\x1b[32m",
+        "{yellow}[SKIP]{reset}",
+        yellow = "\x1b[33m",
         reset = "\x1b[0m"
     );
 
@@ -109,8 +107,6 @@ pub fn kmain(kinfo: &Kinfo) {
         let mut pic = pic::handle();
         pic.0.set_all();
         pic.1.set_all();
-
-        pic.0.clear_mask(1);
     }
 
     kprintln!(
@@ -119,11 +115,9 @@ pub fn kmain(kinfo: &Kinfo) {
         reset = "\x1b[0m"
     );
 
-    kprint!("> ");
-    loop {
-        match keyboard::poll().unwrap() {
-            Keycode::Enter => kprint!("\n> "),
-            k => kprint!("{}", k),
-        }
+    unsafe {
+        irq::enable();
     }
+
+    kprint!("> ");
 }
