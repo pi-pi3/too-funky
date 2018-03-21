@@ -47,6 +47,7 @@ pub mod syscall;
 #[cfg(rustfmt)]
 pub mod arch_x86;
 
+use arch::Kinfo;
 use drivers::keyboard::{self, Keycode};
 use macros::*;
 
@@ -57,28 +58,24 @@ use linked_list_allocator::LockedHeap;
 #[global_allocator]
 pub static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-pub fn kmain() {
+pub fn kmain(kinfo: &Kinfo) {
     kprint!("paging... ");
     kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
     kprint!("memory areas... ");
     kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
-    //kprintln!(
-    //    "available memory: {:x}..{:x} == {}MB",
-    //    mem_min,
-    //    mem_max + 1,
-    //    mem_size / (1024 * 1024)
-    //);
+    kprintln!(
+        "available memory: {}MB",
+        kinfo.free_memory / (1024 * 1024),
+    );
 
     kprint!("kernel heap... ");
     kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
 
-    //kprintln!(
-    //    "heap size: {:x}..{:x} == {}kB",
-    //    heap_start,
-    //    heap_end,
-    //    (heap_end - heap_start) / 1024
-    //);
+    kprintln!(
+        "heap size: {}kB",
+        kinfo.heap_size() / 1024,
+    );
 
     kprint!("video graphics array driver... ");
     kprintln!("{green}[OK]{reset}", green = "\x1b[32m", reset = "\x1b[0m");
@@ -102,8 +99,6 @@ pub fn kmain() {
         green = "\x1b[32m",
         reset = "\x1b[0m"
     );
-    kprintln!("enabling hardware interrupts...");
-    kprintln!("you're on your own now...");
 
     kprint!("> ");
     loop {

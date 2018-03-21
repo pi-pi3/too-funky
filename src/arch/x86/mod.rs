@@ -65,6 +65,26 @@ stack_end:
 "#
 );
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct Kinfo {
+    pub kernel_start: usize,
+    pub kernel_end: usize,
+    pub heap_start: usize,
+    pub heap_end: usize,
+    pub free_memory: usize,
+    _priv: (),
+}
+
+impl Kinfo {
+    pub fn kernel_size(&self) -> usize {
+        self.kernel_end - self.kernel_start
+    }
+
+    pub fn heap_size(&self) -> usize {
+        self.heap_end - self.heap_start
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn _rust_start(
     mb2_addr: usize,
@@ -79,25 +99,27 @@ pub unsafe extern "C" fn _rust_start(
     let page_addr = (kernel_end + 0xfff) & 0xfffff000;
     let page_table = kernel::init_paging(page_addr - kernel::KERNEL_BASE);
 
-    kinit(
+    let kinfo = kinit(
         page_table,
         mb2_addr,
         kernel_start,
         page_addr + 1024 * mem::size_of::<table::Entry>(),
-    );
-    kmain();
+    ).unwrap_or_else(|| unreachable!());
+    kmain(&kinfo);
 
     loop {}
 }
 
-pub fn kinit(
+fn kinit(
     page_table: ActiveTable<'static>,
     mb2_addr: usize,
-    _kernel_start: usize,
+    kernel_start: usize,
     kernel_end: usize,
-) {
+) -> Option<Kinfo> {
     use spin::Once;
     static KINIT: Once<()> = Once::new();
+
+    let mut kinfo = None;
 
     KINIT.call_once(|| {
         let mb2 = unsafe { multiboot2::load(mb2_addr) };
@@ -163,10 +185,21 @@ pub fn kinit(
             pic.0.clear_mask(1);
         }
 
+        kinfo = Some(Kinfo {
+            kernel_start,
+            kernel_end,
+            heap_start,
+            heap_end,
+            free_memory: mem_size - (heap_end - heap_start),
+            _priv: (),
+        });
+
         unsafe {
             irq::enable();
         }
     });
+
+    kinfo
 }
 
 pub mod kernel {
