@@ -1,0 +1,67 @@
+[config]
+skip_core_tasks = true
+
+[env]
+ARCH = "i686"
+QEMU = { script = ['''
+if '${ARCH}' = 'i686'; then
+	echo qemu-system-i386
+else
+	echo qemu-system-x86_64
+fi
+'''] }
+TARGET = "${ARCH}-unknown-funky"
+KERNEL_DEBUG = "target/${TARGET}/debug/too-funky"
+KERNEL_RELEASE = "target/${TARGET}/release/too-funky"
+IMAGE = "funky.iso"
+GRUB = "grub.cfg"
+RUST_TARGET_PATH = { script = ["pwd"] }
+
+[tasks.default]
+run_task = "build"
+
+[tasks.run]
+condition = { env_set = ["QEMU", "IMAGE"] }
+dependencies = ["image"]
+script = ["${QEMU} -d int -no-reboot -cdrom ${IMAGE}"]
+
+[tasks.run-release]
+condition = { env_set = ["QEMU", "IMAGE"] }
+dependencies = ["image-release"]
+script = ["${QEMU} -cdrom ${IMAGE}"]
+
+[tasks.image]
+env = { "KERNEL" = "${KERNEL_RELEASE}" }
+dependencies = ["build-release"]
+run_task = "image-inner"
+
+[tasks.image-release]
+env = { "KERNEL" = "${KERNEL_RELEASE}" }
+dependencies = ["build-release"]
+run_task = "image-inner"
+
+[tasks.image-inner]
+condition = { env_set = ["GRUB", "KERNEL", "IMAGE"] }
+script = [
+'''
+mkdir -p isofiles/boot/grub
+cp ${GRUB} isofiles/boot/grub/
+cp ${KERNEL} isofiles/boot/kernel.bin
+grub-mkrescue -o ${IMAGE} isofiles
+'''
+]
+
+[tasks.build]
+condition = { channels = ["nightly"], env_set = ["TARGET", "RUST_TARGET_PATH"] }
+script = ["xargo build --target ${TARGET}"]
+
+[tasks.build-release]
+condition = { channels = ["nightly"], env_set = ["TARGET", "RUST_TARGET_PATH"] }
+script = ["xargo build --release --target ${TARGET}"]
+
+[tasks.clean]
+script = ["rm -rf target isofiles"]
+
+[tasks.mrproper]
+dependencies = ["clean"]
+script = ["rm -f ${IMAGE}"]
