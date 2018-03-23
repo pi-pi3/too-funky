@@ -1,13 +1,14 @@
 use core::mem;
 
 use multiboot2;
+use raw_cpuid::CpuId;
 
 use kmain;
 
-#[macro_use]
 pub mod interrupt;
 pub mod paging;
 pub mod segmentation;
+pub mod cpuid;
 
 use mem::frame::{Allocator as FrameAllocator, FRAME_SIZE};
 use mem::page::Allocator as PageAllocator;
@@ -63,13 +64,14 @@ stack_end:
 "#
 );
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub struct Kinfo {
     pub kernel_start: usize,
     pub kernel_end: usize,
     pub heap_start: usize,
     pub heap_end: usize,
     pub free_memory: usize,
+    pub cpuid: Option<CpuId>,
     _priv: (),
 }
 
@@ -170,12 +172,19 @@ fn kinit(
             kernel::init_idt();
         }
 
+        let cpuid = if cpuid::available() {
+            Some(CpuId::new())
+        } else {
+            None
+        };
+
         kinfo = Some(Kinfo {
             kernel_start,
             kernel_end,
             heap_start,
             heap_end,
             free_memory: mem_size - (heap_end - heap_start),
+            cpuid,
             _priv: (),
         });
     });

@@ -31,6 +31,7 @@ extern crate once;
 extern crate rlibc;
 extern crate spin;
 extern crate x86;
+extern crate raw_cpuid;
 
 use x86::shared::irq;
 
@@ -111,6 +112,17 @@ pub fn kmain(kinfo: &Kinfo) {
         green = "\x1b[32m",
         reset = "\x1b[0m"
     );
+
+    kprint!("cpuid... ");
+    if kinfo.cpuid.is_some() {
+        kprintln!(
+            "{green}[AVAILABLE]{reset}",
+            green = "\x1b[32m",
+            reset = "\x1b[0m"
+        );
+    } else {
+        panic!("[NOT AVAILABLE]");
+    }
 
     unsafe {
         irq::enable();
