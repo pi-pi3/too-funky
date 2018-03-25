@@ -31,8 +31,8 @@ dependencies = ["image-release"]
 script = ["${QEMU} -cdrom ${IMAGE}"]
 
 [tasks.image]
-env = { "KERNEL" = "${KERNEL_RELEASE}" }
-dependencies = ["build-release"]
+env = { "KERNEL" = "${KERNEL_DEBUG}" }
+dependencies = ["build"]
 run_task = "image-inner"
 
 [tasks.image-release]
